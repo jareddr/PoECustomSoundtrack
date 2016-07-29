@@ -1,0 +1,17 @@
+{
+  "name": "poe-2-d2",
+  "version": "1.0.0",
+  "description": "A small app to replace path of exile music with that of diablo",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron main.js"
+  },
+  "author": "JroxStarblade",
+  "license": "CC0-1.0",
+  "dependencies": {
+    "electron-settings": "^1.1.1",
+    "file-tail": "^0.3.0",
+    "ipc": "0.0.1",
+    "lodash": "^4.13.1"
+  }
+}

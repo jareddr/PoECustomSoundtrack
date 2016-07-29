@@ -1,0 +1,54 @@
+body {
+    border: 0px;
+    padding: 0px;
+    font-family: "Exocet Light";
+    font-weight: bold;
+    color: #ddd;
+    font-size: 23px;
+}
+
+.d2button {
+	background-color:#858480;
+	-moz-border-radius:4px;
+	-webkit-border-radius:4px;
+	border-radius:4px;
+	border:2px solid #333029;
+	display:inline-block;
+	cursor:pointer;
+	color:#11120d;
+	font-size:12px;
+	font-weight:bold;
+	padding:2px 3px;
+	margin-top:5px;
+	text-decoration:none;
+	float:left;
+}
+.d2button:hover {
+	background-color:#9e998b;
+}
+.d2button:active {
+	position:relative;
+	top:1px;
+}
+
+#poe-path{
+	font-size: 13px;
+	display: block;
+	padding: 8px;
+	float:left;
+	text-overflow: ellipsis;
+	cursor:pointer;
+	width:80%;
+	white-space: nowrap
+}
+
+#poe-path:hover{
+	color: #aaa;
+}
+
+#youtube-parent-container{
+	margin-top:20px;
+}
+
+
+@font-face {font-family:"Exocet Light";src:url("EXL_____.eot?") format("eot"),url("EXL_____.woff") format("woff"),url("EXL_____.ttf") format("truetype"),url("EXL_____.svg#ExocetLight") format("svg");font-weight:normal;font-style:normal;}
