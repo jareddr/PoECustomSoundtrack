@@ -1,12 +1,13 @@
 # Path of Exile Custom Soundtrack
+![](pietyd2.png)
 
-**You pick the soundtrack for every area in game**
+**You pick the soundtrack for every area in game!**
 
 This app watches the Path of Exile log file to detect area changes and then plays a predefined track from youtube.
 
-The default config shipping with the app is my attempt at replacing PoE's in game music with the music from Diablo II.
+The default soundtrack shipping with the app is my attempt at zone by zone swap of PoE's music Diablo II's.
 
-I did **not** build this because I think the Path of Exile soundtrack is bad, in fact I enjoy it quite a lot.  I built it because the Diablo II soundtrack drips so heavily with nostalgia that it makes me feel like I'm back in highschool.  Combining this with the game play of Path of Exile made excited enough to start coding.
+I did **not** build this because I think the Path of Exile soundtrack is bad, in fact I enjoy it quite a lot.  I built it because the Diablo II soundtrack drips so heavily with nostalgia that it makes me feel like I'm back in highschool.  Combining this with the game play of Path of Exile made me excited enough to start coding.
 
 ## To Use
 
