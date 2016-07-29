@@ -94,13 +94,110 @@ let areaMap = {
   "hideout7": "kurast_docks",
   "hideout8": "rogue_encampment",
   "hideout10": "pandemonium_fortress",
-  "hideout14": "rogue_encampment",
-  "hideout15": "rogue_encampment",
+  "hideout14": "kurast_docks",
+  "hideout15": "lut_gholein",
 
   "mission": "crypt",
   "sidearea": "diablo",
-  "labyrinth": "harem"
+  "labyrinth": "harem",
+  "izaro": "diablo",
 
+  "map2tier1_1":"crypt",
+  "map2tier1_7":"mesa",
+  "map2tier1_4":"jungle",
+  "map2tier1_2":"monastery",
+  "map2tier1_3":"caves",
+  "map2tier1_5":"mesa",
+  "map2tier1_1Unique":"crypt",
+  "map2tier1_6":"jungle",
+  "map2tier1_6Unique":"jungle",
+  "map2tier2_6":"desert",
+  "map2tier2_5":"kurast",
+  "map2tier2_2":"mesa",
+  "map2tier2_4Unique":"wild",
+  "map2tier2_4":"wild",
+  "map2tier2_1":"sewer",
+  "map2tier2_3":"jungle",
+  "map2tier2_7":"valley",
+  "map2tier3_1":"desert",
+  "map2tier3_4Unique":"jungle",
+  "map2tier3_6":"wild",
+  "map2tier3_7":"sanctuary",
+  "map2tier3_5":"valley",
+  "map2tier3_4":"jungle",
+  "map2tier3_2":"spider",
+  "MapAtziri1":"kurast_sewers",
+  "map2tier3_3":"kurast_sewers",
+  "map2tier3_3Unique":"kurast_sewers",
+  "map2tier4_2Unique":"kurast_sewers",
+  "map2tier4_1":"mesa",
+  "map2tier4_6Unique":"valley",
+  "map2tier4_2":"kurast_sewers",
+  "map2tier4_7":"diablo",
+  "map2tier4_6":"valley",
+  "map2tier4_4":"jungle",
+  "map2tier4_5":"wild",
+  "map2tier4_3":"caves",
+  "map2tier5_3":"wild",
+  "map2tier5_1Unique":"caves",
+  "map2tier5_5":"kurast",
+  "map2tier5_4":"tristram",
+  "map2tier5_2":"valley",
+  "map2tier5_1":"caves",
+  "map2tier5_6":"tombs",
+  "map2tier6_2":"spider",
+  "map2tier6_6":"tombs",
+  "map2tier6_5":"valley",
+  "map2tier6_4":"jungle", //_
+  "map2tier6_6Unique":"tombs",
+  "map2tier6_1Unique":"harem",
+  "map2tier6_3":"wild",
+  "map2tier6_1":"harem",
+  "map2tier6_3Unique":"wild",
+  "map2tier7_3":"crypt",
+  "map2tier7_4":"kurast",
+  "map2tier7_1Unique":"jungle",
+  "map2tier7_5":"valley",
+  "map2tier7_1":"monastery",
+  "map2tier7_2":"sewer",
+  "map2tier8_2":"wild",
+  "map2tier8_1":"tombs",
+  "map2tier8_3":"jungle",
+  "map2tier8_4":"jungle",
+  "map2tier8_5":"valley",
+  "map2tier9_2":"wild",
+  "map2tier9_3":"wild",
+  "map2tier9_5":"diablo",
+  "map2tier9_4":"tombs",
+  "map2tier9_1":"crypt",
+  "map2tier10_3":"desert",
+  "map2tier10_5":"tristram",
+  "map2tier10_1Unique":"monastery",
+  "map2tier10_1":"monastery",
+  "map2tier10_2":"wild",
+  "map2tier10_5Unique":"tristram",
+  "map2tier10_4":"mesa",
+  "map2tier11_3":"sanctuary",
+  "map2tier11_1":"monastery",
+  "map2tier11_2":"desert",
+  "map2tier11_4":"wild",
+  "map2tier12_4":"desert",
+  "map2tier12_2":"kurast_sewers",
+  "map2tier12_1":"valley",
+  "map2tier12_3":"jungle",
+  "map2tier13_2":"valley",
+  "map2tier13_3":"valley",
+  "MapAtziri2":"kurast_sewers",
+  "map2tier13_1":"mesa",
+  "map2tier13_4":"mesa",
+  "map2tier14_3":"kurast_sewers",
+  "map2tier14_1":"tombs",
+  "map2tier14_5":"tristram",
+  "map2tier14_2":"harem",
+  "map2tier14_4":"kurast_sewers",
+  "map2tier15_2":"mesa",
+  "map2tier15_3":"mesa",
+  "map2tier15_1":"diablo",
 }
 
 //Entering area 1_Mission1_1
@@ -121,20 +218,7 @@ let areaMap = {
 // 2016/07/28 08:45:47 128336359 8a3 [DEBUG Client 10028] Entering area 3_Daily2_3
 // 2016/07/28 08:47:08 128417203 8a3 [DEBUG Client 10028] Entering area 3_Daily2_3
 // 2016/07/28 08:47:13 128422015 8a3 [DEBUG Client 10028] Entering area Hideout6_2
-// 2016/06/07 20:44:10 8593984 88d [DEBUG Client 8820] Entering area 1_Labyrinth_Airlock
-// 2016/06/07 20:44:22 8606234 88d [DEBUG Client 8820] Entering area 1_Labyrinth_OH_straight
-// 2016/06/07 20:45:09 8653671 88d [DEBUG Client 8820] Entering area 1_Labyrinth_OH_branch_door
-// 2016/06/07 20:45:45 8688796 88d [DEBUG Client 8820] Entering area 1_Labyrinth_DG_end_bottleneck_#
-// 2016/06/07 20:50:10 8954312 88d [DEBUG Client 8820] Entering area 1_Labyrinth_OH_branch_door
-// 2016/06/07 20:50:33 8976906 88d [DEBUG Client 8820] Entering area 1_Labyrinth_C_straight
-// 2016/06/07 20:51:19 9023734 88d [DEBUG Client 8820] Entering area 1_Labyrinth_boss_1
-// 2016/06/07 20:52:43 9107546 88d [DEBUG Client 8820] Entering area 1_Labyrinth_DG_branch_bottleneck_1_#
-// 2016/06/07 20:53:27 9151250 88d [DEBUG Client 8820] Entering area 1_Labyrinth_RT_branch_bottleneck_1
-// 2016/06/07 21:00:16 9559859 88d [DEBUG Client 8820] Entering area 1_Labyrinth_boss_1
-// 2016/06/07 21:01:06 9610218 88d [DEBUG Client 8820] Entering area 1_Labyrinth_OH_branch_bottleneck_1
-// 2016/06/07 21:02:41 9705421 88d [DEBUG Client 8820] Entering area 1_Labyrinth_C_straight_bottleneck
-// 2016/06/07 21:03:26 9750546 88d [DEBUG Client 8820] Entering area 1_Labyrinth_RT_straight_bottleneck
-// 2016/06/07 21:04:45 9829484 88d [DEBUG Client 8820] Entering area 1_Labyrinth_boss_2_end
+
 
 
 let soundtrack = [
@@ -177,21 +261,31 @@ let soundtrack = [
 
 let parseAreaName = function(logAreaName){
   areaName = false
+  //hideouts
   if(logAreaName.match(/(Hideout\d)/)){
     areaName = logAreaName.match(/(Hideout\d)/)[1].trim().toLowerCase()
   }
-  else if(logAreaName.match(/(Mission)/)){
+  //missions
+  else if(logAreaName.match(/(Mission)/) || logAreaName.match(/(Arena)/) || logAreaName.match(/(Daily)/) || logAreaName.match(/(Relic)/)){
     areaName = "mission"
   }
+  //vaal side areas
   else if(logAreaName.match(/(SideArea)/)){
     areaName = "sidearea"
   }
+  //lab boss fights
   else if(logAreaName.match(/(Labyrinth_boss)/)){
     areaName = "izaro" 
   }
+  //lab
   else if(logAreaName.match(/(Labyrinth)/)){
     areaName = "labyrinth" 
   }
+  //maps
+  else if(logAreaName.match(/Map2Tier\d+_\d+/)){
+    areaName = logAreaName.match(/(Map2Tier\d+_\d+)/)[1].trim().toLowerCase()
+  }
+  //story line areas
   else if(logAreaName.match(/\d_(.*)/)){
     areaName = logAreaName.match(/\d_(.*)/)[1].trim()
   }
