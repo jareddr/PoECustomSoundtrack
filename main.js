@@ -1,5 +1,5 @@
 const electron = require('electron');
-const poe2d2 = require('./poe2d2.js')
+const poe2d2 = require('./poeCustomSoundtrack.js')
 // Module to control application life.
 const app = electron.app
 // Module to create native browser window.
