@@ -140,6 +140,7 @@ let areaMap = {
 let soundtrack = [
     {"name": "options", "url": "https://www.youtube.com/watch?v=AoTDngh-d2E", "length": "2:48"},
     {"name": "rogue_encampment", "url": "https://www.youtube.com/watch?v=t1Zf9w--VhM", "length": "4:08"},
+    //{"name": "rogue_encampment", "url": "C:/some/folder/somefile.mp3", "length": "4:08"},
     {"name": "wild", "url": "https://www.youtube.com/watch?v=LEKoC5s6150", "length": "8:00"},
     {"name": "tristram", "url": "https://www.youtube.com/watch?v=8nl4KeCiEtQ", "length": "7:41"},
     {"name": "monastery", "url": "https://www.youtube.com/watch?v=HvMeIJOqrhg", "length": "5:08"},
@@ -201,10 +202,14 @@ let getTrackname = function(areaName){
   return areaMap[areaName] ? areaMap[areaName] : false;
 }
 
-let getYoutubeIdFromUrl = function(url){
+let getTrackId = function(url){
   id = false
-  if(url.match(/\?v=(.{11})/)){
+  type = getTrackType(url)
+  if(type == 'youtube' && url.match(/\?v=(.{11})/)){
     id = url.match(/\?v=(.{11})/)[1]
+  }
+  else if(type == 'local'){
+    id = url
   }
   return id
 }
@@ -223,12 +228,29 @@ let getLogFile = function(poePath){
   return poePath + "\\logs\\Client.txt"
 }
 
+let getTrackType = function(url){
+  if(url.match(/http/) && url.match(/youtu/)){
+    return 'youtube'
+  }
+  else if(url.match(/http/) && url.match(/soundcloud/)){
+    return 'soundcloud'
+  }
+  
+  return 'local'
+}
+
+let generateTrack = function(track){
+  var type = getTrackType(track.url)
+  var id = getTrackId(track.url)
+  return {type: type, id:id, name:track.name, duration:getDurationInSeconds(track.length)}
+}
+
 let getTrack = function(areaName){
   track = false
   trackName = getTrackname(areaName)
   t = _.find(soundtrack, { 'name': trackName });
   if(t){
-    track = {type: "youtube", "id":getYoutubeIdFromUrl(t.url), "duration": getDurationInSeconds(t.length), "name": t.name}
+    track = generateTrack(t)
   }
   return track
 }

@@ -10,6 +10,7 @@ App = {}
 
 App.playerController = new PlayerController() 
 App.playerController.register("YoutubePlayer", 'youtube')
+App.playerController.register("LocalPlayer", 'local')
 
 
 //handle file select dialog
