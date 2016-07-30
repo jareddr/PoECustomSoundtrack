@@ -48,6 +48,7 @@ let areaMap = {
   "2_12": "jungle",  //Wetlands
   "2_11_1": "kurast_sewers", //vaal ruins
   "2_8": "jungle", //northern forest
+  "2_13": "jungle", //dread thicket
   "2_14_2": "kurast_sewers", //caverns
   "2_14_3": "kurast_sewers", //ancient pyramid
 
@@ -59,6 +60,7 @@ let areaMap = {
   "3_10_1": "sewer", //warehouse sewers
   "3_4": "desert", //warehouse district
   "3_5": "desert", //marketplace
+  "3_10_2": "sewer", //marketplace sewers
   "3_6_1": "tombs", //catacombs
   "3_7": "valley", //battlefront
   "3_8_1": "harem", //Solaris temple level 1
@@ -222,40 +224,40 @@ let areaMap = {
 
 
 let soundtrack = [
-    {"name": "options", "url": "https://www.youtube.com/watch?v=AoTDngh-d2E", "length": "2:48"},
-    {"name": "rogue_encampment", "url": "https://www.youtube.com/watch?v=t1Zf9w--VhM", "length": "4:08"},
-    //{"name": "rogue_encampment", "url": "C:/some/folder/somefile.mp3", "length": "4:08"},
-    {"name": "wild", "url": "https://www.youtube.com/watch?v=LEKoC5s6150", "length": "8:00"},
-    {"name": "tristram", "url": "https://www.youtube.com/watch?v=8nl4KeCiEtQ", "length": "7:41"},
-    {"name": "monastery", "url": "https://www.youtube.com/watch?v=HvMeIJOqrhg", "length": "5:08"},
-    {"name": "caves", "url": "https://www.youtube.com/watch?v=0Zd0zDnTCoM", "length": "3:53"},
-    {"name": "crypt", "url": "https://www.youtube.com/watch?v=U2eHs-C1828", "length": "4:31"},
+    {"name": "options", "location": "https://www.youtube.com/watch?v=AoTDngh-d2E", "length": "2:48"},
+    {"name": "rogue_encampment", "location": "https://www.youtube.com/watch?v=t1Zf9w--VhM", "length": "4:08"},
+    //{"name": "rogue_encampment", "location": "C:/some/folder/somefile.mp3", "length": "4:08"},
+    {"name": "wild", "location": "https://www.youtube.com/watch?v=LEKoC5s6150", "length": "8:00"},
+    {"name": "tristram", "location": "https://www.youtube.com/watch?v=8nl4KeCiEtQ", "length": "7:41"},
+    {"name": "monastery", "location": "https://www.youtube.com/watch?v=HvMeIJOqrhg", "length": "5:08"},
+    {"name": "caves", "location": "https://www.youtube.com/watch?v=0Zd0zDnTCoM", "length": "3:53"},
+    {"name": "crypt", "location": "https://www.youtube.com/watch?v=U2eHs-C1828", "length": "4:31"},
 
-    {"name": "lut_gholein", "url": "https://www.youtube.com/watch?v=OmdXk3jJsB0", "length": "3:03"},
-    {"name": "desert", "url": "https://www.youtube.com/watch?v=mseOvWsn55w", "length": "6:35"},
-    {"name": "valley", "url": "https://www.youtube.com/watch?v=PYe_Dd48Mcs", "length": "2:47"},
-    {"name": "sewer", "url": "https://www.youtube.com/watch?v=LH_F9SshwIw", "length": "4:00"},
-    {"name": "tombs", "url": "https://www.youtube.com/watch?v=YnSKVIH4_3k", "length": "5:35"},
-    {"name": "lair", "url": "https://www.youtube.com/watch?v=MbyhMeB10t8", "length": "3:16"},
-    {"name": "harem", "url": "https://www.youtube.com/watch?v=ub_Igr_L-rw", "length": "2:29"},
-    {"name": "sanctuary", "url": "https://www.youtube.com/watch?v=CoTRxDhyzms", "length": "1:58"},
+    {"name": "lut_gholein", "location": "https://www.youtube.com/watch?v=OmdXk3jJsB0", "length": "3:03"},
+    {"name": "desert", "location": "https://www.youtube.com/watch?v=mseOvWsn55w", "length": "6:35"},
+    {"name": "valley", "location": "https://www.youtube.com/watch?v=PYe_Dd48Mcs", "length": "2:47"},
+    {"name": "sewer", "location": "https://www.youtube.com/watch?v=LH_F9SshwIw", "length": "4:00"},
+    {"name": "tombs", "location": "https://www.youtube.com/watch?v=YnSKVIH4_3k", "length": "5:35"},
+    {"name": "lair", "location": "https://www.youtube.com/watch?v=MbyhMeB10t8", "length": "3:16"},
+    {"name": "harem", "location": "https://www.youtube.com/watch?v=ub_Igr_L-rw", "length": "2:29"},
+    {"name": "sanctuary", "location": "https://www.youtube.com/watch?v=CoTRxDhyzms", "length": "1:58"},
 
-    {"name": "kurast_docks", "url": "https://www.youtube.com/watch?v=OehozBDOF_Q", "length": "2:10"},
-    {"name": "jungle", "url": "https://www.youtube.com/watch?v=3ZXLsl2qazQ", "length": "7:42"},
-    {"name": "kurast", "url": "https://www.youtube.com/watch?v=bwPNeWUSjKQ", "length": "4:58"},
-    {"name": "spider", "url": "https://www.youtube.com/watch?v=Ocp7GyhyeTo", "length": "4:10"},
-    {"name": "kurast_sewers", "url": "https://www.youtube.com/watch?v=AvfZRdGZstA", "length": "4:34"},
+    {"name": "kurast_docks", "location": "https://www.youtube.com/watch?v=OehozBDOF_Q", "length": "2:10"},
+    {"name": "jungle", "location": "https://www.youtube.com/watch?v=3ZXLsl2qazQ", "length": "7:42"},
+    {"name": "kurast", "location": "https://www.youtube.com/watch?v=bwPNeWUSjKQ", "length": "4:58"},
+    {"name": "spider", "location": "https://www.youtube.com/watch?v=Ocp7GyhyeTo", "length": "4:10"},
+    {"name": "kurast_sewers", "location": "https://www.youtube.com/watch?v=AvfZRdGZstA", "length": "4:34"},
 
-    {"name": "pandemonium_fortress", "url": "https://www.youtube.com/watch?v=v2XzZZI0f48", "length": "3:56"},
-    {"name": "mesa", "url": "https://www.youtube.com/watch?v=qlIBDL_W8xo", "length": "5:26"},
-    {"name": "diablo", "url": "https://www.youtube.com/watch?v=n041TsHeJi8", "length": "2:35"},
+    {"name": "pandemonium_fortress", "location": "https://www.youtube.com/watch?v=v2XzZZI0f48", "length": "3:56"},
+    {"name": "mesa", "location": "https://www.youtube.com/watch?v=qlIBDL_W8xo", "length": "5:26"},
+    {"name": "diablo", "location": "https://www.youtube.com/watch?v=n041TsHeJi8", "length": "2:35"},
 
-    {"name": "intro", "url": "https://www.youtube.com/watch?v=LngkyTYbLrk", "length": "1:40"},
-    {"name": "harrogath", "url": "https://www.youtube.com/watch?v=layjWs2IpS4", "length": "4:52"},
-    {"name": "siege", "url": "https://www.youtube.com/watch?v=HylopY97ALc", "length": "6:49"},
-    {"name": "ice_caves", "url": "https://www.youtube.com/watch?v=hMppfXwvVoM", "length": "4:41"},
-    {"name": "temple", "url": "https://www.youtube.com/watch?v=YuTE61U3iJM", "length": "3:37"},
-    {"name": "baal", "url": "https://www.youtube.com/watch?v=xcuz5IofwKo", "length": "4:23"},
+    {"name": "intro", "location": "https://www.youtube.com/watch?v=LngkyTYbLrk", "length": "1:40"},
+    {"name": "harrogath", "location": "https://www.youtube.com/watch?v=layjWs2IpS4", "length": "4:52"},
+    {"name": "siege", "location": "https://www.youtube.com/watch?v=HylopY97ALc", "length": "6:49"},
+    {"name": "ice_caves", "location": "https://www.youtube.com/watch?v=hMppfXwvVoM", "length": "4:41"},
+    {"name": "temple", "location": "https://www.youtube.com/watch?v=YuTE61U3iJM", "length": "3:37"},
+    {"name": "baal", "location": "https://www.youtube.com/watch?v=xcuz5IofwKo", "length": "4:23"},
 
   ];
 
@@ -296,14 +298,14 @@ let getTrackname = function(areaName){
   return areaMap[areaName] ? areaMap[areaName] : false;
 }
 
-let getTrackId = function(url){
+let getTrackId = function(location){
   id = false
-  type = getTrackType(url)
-  if(type == 'youtube' && url.match(/\?v=(.{11})/)){
-    id = url.match(/\?v=(.{11})/)[1]
+  type = getTrackType(location)
+  if(type == 'youtube' && location.match(/\?v=(.{11})/)){
+    id = location.match(/\?v=(.{11})/)[1]
   }
   else if(type == 'local'){
-    id = url
+    id = location
   }
   return id
 }
@@ -322,11 +324,11 @@ let getLogFile = function(poePath){
   return poePath + "\\logs\\Client.txt"
 }
 
-let getTrackType = function(url){
-  if(url.match(/http/) && url.match(/youtu/)){
+let getTrackType = function(location){
+  if(location.match(/http/) && location.match(/youtu/)){
     return 'youtube'
   }
-  else if(url.match(/http/) && url.match(/soundcloud/)){
+  else if(location.match(/http/) && location.match(/soundcloud/)){
     return 'soundcloud'
   }
   
@@ -334,8 +336,8 @@ let getTrackType = function(url){
 }
 
 let generateTrack = function(track){
-  var type = getTrackType(track.url)
-  var id = getTrackId(track.url)
+  var type = getTrackType(track.location)
+  var id = getTrackId(track.location)
   return {type: type, id:id, name:track.name, duration:getDurationInSeconds(track.length)}
 }
 
@@ -383,7 +385,8 @@ let doesLogExist = function(){
   var file = getLogFile(settings.get('poePath'))
   
   try{
-    fs.openSync(file, 'r+');
+    handle = fs.openSync(file, 'r+');
+    fs.closeSync(handle)
   } catch (err) {
     return false
   }
@@ -397,8 +400,9 @@ let checkMusicVolume = function (){
   var home = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
   var configFile = home + "\\Documents\\My Games\\Path of Exile\\production_Config.ini"
   try{
-    fs.openSync(configFile, 'r+');
+    handle = fs.openSync(configFile, 'r+');
     var data = fs.readFileSync(configFile, "utf-8")
+    fs.closeSync(handle)
     if(data.match(/music_volume[2]\=(\d+)/ig)){
       return parseInt(data.match(/music_volume[2]\=(\d+)/)[1])
     }
