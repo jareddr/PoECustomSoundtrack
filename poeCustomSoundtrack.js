@@ -15,41 +15,8 @@ let ft;
 
 let worldAreas = defaults.worldAreas
 let trackList = defaults.trackList
-let soundTrack = defaults.soundTrack
+let soundtrack = defaults.soundtrack
 
-
-let parseAreaCode = function(logAreaCode){
-  areaCode = false
-  //hideouts
-  if(logAreaCode.match(/(Hideout\d)/)){
-    areaName = logAreaCode.match(/(Hideout\d)/)[1].trim().toLowerCase()
-  }
-  //missions
-  else if(logAreaCode.match(/(Mission)/) || logAreaCode.match(/(Arena)/) || logAreaCode.match(/(Daily)/) || logAreaCode.match(/(Relic)/)){
-    areaName = "mission"
-  }
-  //vaal side areas
-  else if(logAreaCode.match(/(SideArea)/)){
-    areaName = "sidearea"
-  }
-  //lab boss fights
-  else if(logAreaCode.match(/(Labyrinth_boss)/)){
-    areaName = "izaro" 
-  }
-  //lab
-  else if(logAreaCode.match(/(Labyrinth)/)){
-    areaName = "labyrinth" 
-  }
-  //maps
-  else if(logAreaCode.match(/Map2Tier\d+_\d+/)){
-    areaName = logAreaCode.match(/(Map2Tier\d+_\d+)/)[1].trim().toLowerCase()
-  }
-  //story line areas
-  else if(logAreaCode.match(/\d_(.*)/)){
-    areaName = logAreaCode.match(/\d_(.*)/)[1].trim()
-  }
-  return areaCode
-}
 
 let getTrackname = function(areaName){
   return areaMap[areaName] ? areaMap[areaName] : false;
@@ -106,11 +73,11 @@ let getTrack = function(areaCode){
   //How to find a track
   //Get area_code from log
   //Look up area_name from worldAreas[area_code]
-  //Look up track_name from soundTrack[area_name]
+  //Look up track_name from soundtrack[area_name]
   //Look up track from _.where(trackList, {name: track_name})
   track = false
   areaName = worldAreas[areaCode]
-  trackName = soundTrack[areaName]
+  trackName = soundtrack[areaName]
   //if track name is random, choose a random track from the entire track list
   //Otherwise filter the list of tracks by matching names and then randomly choose one that matches
   trackData = trackName == "random" ? randomElement(trackList) : randomElement(_.filter(trackList, {'name':trackName}))
@@ -125,7 +92,6 @@ let parseLogLine = function(line) {
   var newArea = line.match(/Entering area (.*)/)
   if(newArea){
     //console.log(line)
-    //var areaCode = parseAreaCode(newArea[1].trim())
     var areaCode = newArea[1]
     track = getTrack(areaCode)
     if(track){
@@ -141,7 +107,7 @@ let parseLogLine = function(line) {
 }
 
 let startWatchingLog = function(){
-  //if we're already watching a file, lets stop
+  //if we're already watching a file, lets stop before watching a new file
   if(ft && ft.stop){
     ft.stop()
   }
@@ -150,19 +116,59 @@ let startWatchingLog = function(){
   ft.on('line', parseLogLine);
  }
 
-let doesLogExist = function(){
-  var file = getLogFile(settings.get('poePath'))
-  
+let doesFileExist = function(file){
   try{
     handle = fs.openSync(file, 'r+');
     fs.closeSync(handle)
   } catch (err) {
     return false
   }
-
   return true
 }
 
+let debugLog = function(line){
+  try{
+    handle = fs.openSync("debug.log", 'a');
+    fs.writeFileSync(file,line)
+    fs.closeSync(handle)
+    return true
+  } catch (err) {
+    return false
+  }
+
+}
+
+let writeFile = function(file, data)
+{
+  try{
+    handle = fs.openSync(file, 'w');
+    fs.writeFileSync(file,data)
+    fs.closeSync(handle)
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
+let readJsonFile = function(file)
+{
+  try{
+    handle = fs.openSync(file, 'r+');
+    var data = fs.readFileSync(file, "utf-8")
+    fs.closeSync(handle)
+    data = data.replace(/\\+/g, "/")
+    return JSON.parse(data)
+  } catch (err) {
+    console.log("Error reading ", file)
+    console.log(err)
+    return false
+  }
+}
+
+let doesLogExist = function(){
+  var file = getLogFile(settings.get('poePath'))
+  return doesFileExist(file)  
+}
 
 
 let checkMusicVolume = function (){
@@ -180,12 +186,60 @@ let checkMusicVolume = function (){
   return false
 }
 
-let run = function(browserWindow){
-  mainWindow = browserWindow;
+let setDefaults = function(){
+  
+  //make sure world areas, default trackList and default soundtrack are on disk
+  if(!doesFileExist('WorldAreas.json')){
+    writeFile('WorldAreas.json', JSON.stringify(defaults.worldAreas, null, "\t"))
+  }
 
+  if(!doesFileExist('TrackList.json')){
+    writeFile('TrackList.json', JSON.stringify(defaults.trackList, null, "\t"))
+  }
+
+  if(!doesFileExist('diablo2.soundtrack')){
+    writeFile('diablo2.soundtrack', JSON.stringify(defaults.soundtrack, null, "\t"))
+  }
+
+  //define poePath in settings if not set
   if(!settings.get('poePath')){
     settings.set('poePath', DEFAULT_POE_PATH)
   }
+
+  //define selected soundtrack if not set
+  if(!settings.get('soundtrack')){
+    settings.set('soundtrack', "diablo2.soundtrack")
+  }  
+
+}
+
+let loadTrackList = function(){
+  trackList = readJsonFile('TrackList.json')
+  if(!trackList){
+    trackList = defaults.trackList
+    return false
+  }
+  return true
+}
+
+let loadSoundtrack = function(){
+  var soundtrackFile = settings.get('soundtrack')
+  soundtrack = readJsonFile(soundtrackFile)
+  if(!soundtrack){
+    soundtrack = defaults.soundtrack
+    return false
+  }
+  return true  
+}
+
+let run = function(browserWindow){
+  mainWindow = browserWindow;
+
+  setDefaults()
+
+  loadTrackList()
+  
+  loadSoundtrack()
 
   startWatchingLog()
 

@@ -1,5 +1,5 @@
 const electron = require('electron');
-const poe2d2 = require('./poeCustomSoundtrack.js')
+const poeCustomSoundtrack = require('./poeCustomSoundtrack.js')
 // Module to control application life.
 const app = electron.app
 // Module to create native browser window.
@@ -11,7 +11,7 @@ let mainWindow
 
 function createWindow () {
   // Create the browser window.
-  mainWindow = new BrowserWindow({width: 300, height: 500, resizable: false, minimizable: false, maximizable: false, title: "PoE2D2", icon: "./diablo.ico", })
+  mainWindow = new BrowserWindow({width: 300, height: 500, resizable: false, minimizable: false, maximizable: false, title: "PoE Custom Soundtrack", icon: "./piety.ico", })
 
   mainWindow.setMenu(null)
   // and load the index.html of the app.
@@ -20,7 +20,7 @@ function createWindow () {
   // Open the DevTools.
   //mainWindow.webContents.openDevTools()
 
-  poe2d2.run(mainWindow)
+  poeCustomSoundtrack.run(mainWindow)
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {

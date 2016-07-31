@@ -35,7 +35,7 @@ let trackList = [
 
  ];
 
-let soundTrack = {
+let soundtrack = {
 	"Lioneye's Watch":"rogue_encampment",
 	"The Twilight Strand":"options",
 	"The Coast":"wild",
@@ -1776,6 +1776,6 @@ let worldAreas = {
 
 module.exports = {
     trackList: trackList,
-	soundTrack: soundTrack,
+	soundtrack: soundtrack,
 	worldAreas : worldAreas
 }
