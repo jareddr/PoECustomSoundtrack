@@ -4,7 +4,8 @@ body {
     font-family: "Exocet Light";
     font-weight: bold;
     color: #ddd;
-    font-size: 23px;
+    font-size: 18px;
+    overflow-x: hidden;
 }
 
 .d2button {
@@ -41,10 +42,25 @@ body {
 	width:80%;
 	white-space: nowrap
 }
+#soundtrack-name{
+	font-size: 13px;
+	display: block;
+	padding: 8px;
+	float:left;
+	text-overflow: ellipsis;
+	cursor:pointer;
+	width:80%;
+	white-space: nowrap
+}
 
 #poe-path:hover{
 	color: #aaa;
 }
+
+#soundtrack-name:hover{
+	color: #aaa;
+}
+
 
 #youtube-parent-container{
 	margin-top:20px;

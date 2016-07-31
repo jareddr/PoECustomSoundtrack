@@ -159,8 +159,6 @@ let readJsonFile = function(file)
     data = data.replace(/\\+/g, "/")
     return JSON.parse(data)
   } catch (err) {
-    console.log("Error reading ", file)
-    console.log(err)
     return false
   }
 }
@@ -185,6 +183,10 @@ let checkMusicVolume = function (){
   }
   return false
 }
+
+
+
+
 
 let setDefaults = function(){
   
@@ -222,14 +224,19 @@ let loadTrackList = function(){
   return true
 }
 
-let loadSoundtrack = function(){
-  var soundtrackFile = settings.get('soundtrack')
-  soundtrack = readJsonFile(soundtrackFile)
+let loadSoundtrack = function(file){
+  var currentSoundtrack = soundtrack
+  soundtrack = readJsonFile(file)
   if(!soundtrack){
-    soundtrack = defaults.soundtrack
+    soundtrack = currentSoundtrack
     return false
   }
   return true  
+}
+
+
+let getState = function(){
+  return {path:settings.get('poePath'),valid:doesLogExist(), volume:checkMusicVolume(), soundtrack:settings.get('soundtrack')}
 }
 
 let run = function(browserWindow){
@@ -239,7 +246,7 @@ let run = function(browserWindow){
 
   loadTrackList()
   
-  loadSoundtrack()
+  loadSoundtrack(settings.get('soundtrack'))
 
   startWatchingLog()
 
@@ -249,12 +256,24 @@ let run = function(browserWindow){
       if(doesLogExist()){
         startWatchingLog()
       }
-      event.sender.send('updateState', {path:settings.get('poePath'),valid:doesLogExist(), volume:checkMusicVolume()});
+      event.sender.send('updateState', getState());
+    }
+  });
+
+  ipcMain.on('setSoundtrack', function(event, arg){
+    console.log('Setting soundtrack', arg)
+    if(arg && arg[0]){
+      itWorked = loadSoundtrack(arg[0])
+      if(itWorked){
+        console.log('Set soundtrack', arg[0])
+        settings.set('soundtrack', arg[0])
+        event.sender.send('updateState', getState());
+      }
     }
   });
 
   ipcMain.on('updateState', function(event, arg){
-     event.sender.send('updateState', {path:settings.get('poePath'),valid:doesLogExist(), volume:checkMusicVolume()});
+     event.sender.send('updateState', getState());
   })
 }
 

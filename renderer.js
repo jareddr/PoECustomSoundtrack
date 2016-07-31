@@ -20,6 +20,13 @@ loadLogFile = function(){
   })
 }
 
+//handle soundtrack file selection
+loadSoundtrackFile = function(){
+	dialog.showOpenDialog({title: "Load Custom Soundtrack", properties: ["openFile"], filters: [{name: "Custom Soundtrrack", extensions: ['soundtrack']}] }, function(fileNames){
+  	ipcRenderer.send("setSoundtrack", fileNames)
+  })
+}
+
 
 //backend will tell us to play a new track based on zone changes
 ipcRenderer.on('changeTrack', function(event,data){
@@ -29,10 +36,16 @@ ipcRenderer.on('changeTrack', function(event,data){
 //backend will send us state values, use it to stupidly update frontend
 ipcRenderer.on('updateState', function(event,data){
 	document.getElementById('poe-path').innerText = data.path.replace(/\\/g, "/")
+	var soundtrackName = data.soundtrack.replace(/\\/g, "/")
+	if(soundtrackName.match(/([^/]+)\.soundtrack$/)){
+		soundtrackName = soundtrackName.match(/([^/\\]+)\.soundtrack$/)[1]
+	}
+	document.getElementById('soundtrack-name').innerText = soundtrackName
 	document.getElementById('poe-path-valid').style.display = data.valid ? "inline" : "none"
 	document.getElementById('poe-path-invalid').style.display = data.valid ? "none" : "inline"
 	document.getElementById('volume-valid').style.display = data.volume === 0 ? "inline" : "none"
 	document.getElementById('volume-invalid').style.display = data.volume === 0 ? "none" : "inline"
+
 })
 
 //tell backend we'd like to update our state
