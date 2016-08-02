@@ -51,6 +51,11 @@ ipcRenderer.on('updateState', function(event,data){
 //tell backend we'd like to update our state
 ipcRenderer.send("updateState")
 
+//backend will tell us to play a new track based on zone changes
+ipcRenderer.on('errorMessage', function(event,data){
+	alert(data)
+})
+
 //ask for new state values every second, ya dumb, whatever.
 setInterval(function(){
 	ipcRenderer.send("updateState")	

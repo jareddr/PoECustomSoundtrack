@@ -14,7 +14,6 @@ let currentTrackName = false;
 let ft;
 
 let worldAreas = defaults.worldAreas
-let trackList = defaults.trackList
 let soundtrack = defaults.soundtrack
 
 
@@ -62,7 +61,7 @@ let getTrackType = function(location){
 let generateTrack = function(track){
   var type = getTrackType(track.location)
   var id = getTrackId(track.location)
-  return {type: type, id:id, name:track.name, duration:getDurationInSeconds(track.length)}
+  return {type: type, id:id, name:track.name}
 }
 
 let randomElement = function(arr){
@@ -73,14 +72,14 @@ let getTrack = function(areaCode){
   //How to find a track
   //Get area_code from log
   //Look up area_name from worldAreas[area_code]
-  //Look up track_name from soundtrack[area_name]
-  //Look up track from _.where(trackList, {name: track_name})
+  //Look up track_name from soundtrack.map[area_name]
+  //Look up track from _.where(soundtrack.tracks, {name: track_name})
   track = false
   areaName = worldAreas[areaCode]
-  trackName = soundtrack[areaName]
+  trackName = soundtrack.map[areaName]
   //if track name is random, choose a random track from the entire track list
   //Otherwise filter the list of tracks by matching names and then randomly choose one that matches
-  trackData = trackName == "random" ? randomElement(trackList) : randomElement(_.filter(trackList, {'name':trackName}))
+  trackData = trackName == "random" ? randomElement(soundtrack.tracks) : randomElement(_.filter(soundtrack.tracks, {'name':trackName}))
   if(trackData){
     track = generateTrack(trackData)
   }
@@ -159,6 +158,7 @@ let readJsonFile = function(file)
     data = data.replace(/\\+/g, "/")
     return JSON.parse(data)
   } catch (err) {
+    mainWindow.webContents.send('errorMessage' , "Error loading: " + file + "\n"+ err.message);
     return false
   }
 }
@@ -190,13 +190,9 @@ let checkMusicVolume = function (){
 
 let setDefaults = function(){
   
-  //make sure world areas, default trackList and default soundtrack are on disk
+  //make sure world areas and default soundtrack are on disk
   if(!doesFileExist('WorldAreas.json')){
     writeFile('WorldAreas.json', JSON.stringify(defaults.worldAreas, null, "\t"))
-  }
-
-  if(!doesFileExist('TrackList.json')){
-    writeFile('TrackList.json', JSON.stringify(defaults.trackList, null, "\t"))
   }
 
   if(!doesFileExist('diablo2.soundtrack')){
@@ -213,15 +209,6 @@ let setDefaults = function(){
     settings.set('soundtrack', "diablo2.soundtrack")
   }  
 
-}
-
-let loadTrackList = function(){
-  trackList = readJsonFile('TrackList.json')
-  if(!trackList){
-    trackList = defaults.trackList
-    return false
-  }
-  return true
 }
 
 let loadSoundtrack = function(file){
@@ -244,8 +231,6 @@ let run = function(browserWindow){
 
   setDefaults()
 
-  loadTrackList()
-  
   loadSoundtrack(settings.get('soundtrack'))
 
   startWatchingLog()
