@@ -1,4 +1,6 @@
 # Path of Exile Custom Soundtrack
+[Downloads here](https://github.com/jareddr/PoECustomSoundtrack/releases)
+
 ![](pietyd2.png)
 
 **You pick the soundtrack for every area in game!**
@@ -82,3 +84,10 @@ The `location` of a track can either be a youtube url (for now the full youtube.
 I'd recommend using the diablo2.soundtrack file as a base and editing from there.  It should contain a reference to every zone in the game and either have it mapped to a specific track or set to random.
 
 If you break your diablo2.soundtrack file some how, simply delete it and re-run the app, a fresh one will be generated.
+
+
+## Modifying the Code
+
+This app was built with the [Electron](http://electron.atom.io/) framework.  If you download a [release](https://github.com/jareddr/PoECustomSoundtrack/releases) the code for Path of Exile Custom Soundtrack can be found in the `resources\app` folder.
+
+If you want to run the program from the source you'll need to obtain a copy of [Electron](http://electron.atom.io/)
