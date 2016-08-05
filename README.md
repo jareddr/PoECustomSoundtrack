@@ -1,6 +1,8 @@
 # Path of Exile Custom Soundtrack
 [Downloads here](https://github.com/jareddr/PoECustomSoundtrack/releases)
 
+[Demo Video](https://www.youtube.com/watch?v=DyfBy1K1Y1s)
+
 ![](pietyd2.png)
 
 **You pick the soundtrack for every area in game!**
