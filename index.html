@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <title>PoE 2 D2</title>
   </head>
-<body style="background-image: url(piety.png); background-size:cover">
+<body style="background-image: url(pietyd2.png); background-size:cover">
     <div>
       <div>
-        (1)
-  Select Path of Exile directory
+        (1) Select Path of Exile directory
         <i id="poe-path-valid" class="material-icons dp48" style="float:right;color:green;display:none" title="Path of Exile Detected!">check_circle</i>
         <i id="poe-path-invalid" class="material-icons" style="float:right; color:red; cursor:pointer;display:none" title="Cannot locate path of exile client log.">error</i>
       </div>
@@ -18,8 +17,7 @@
     </div>
     
     <br><br>
-    <div>(11) 
-  Turn off in game music
+    <div>(11) Turn off in game music
       <i id="volume-valid" class="material-icons dp48" style="float:right; color:green;display:none" title="Checks out.">check_circle</i>
       <i id="volume-invalid" class="material-icons dp48" style="float:right; color:orange; cursor:pointer;display:none" title="Set the music volume in game to 0 to avoid clashing tracks.">warning</i>
     </div>
@@ -31,6 +29,9 @@
       <a href="#" class="d2button" onclick="loadSoundtrackFile()">...</a>
       <div id="soundtrack-name" onclick="loadSoundtrackFile()">Load soundtrack</div>
     </div>
+    <br><br>
+    <div id="local-parent-container"></div>
+    <br><br>
     <div id="youtube-parent-container"></div>
   
 
@@ -40,14 +41,12 @@
   </script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-
 </body>
 
   <script>
     // You can also require other files to run in this process
     require('./renderer.js')
   </script>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
-      rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </html>

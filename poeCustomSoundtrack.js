@@ -61,6 +61,7 @@ let getTrackType = function(location){
 let generateTrack = function(track){
   var type = getTrackType(track.location)
   var id = getTrackId(track.location)
+  //type: youtube or local, id:youtube ?v= or local path name: track name
   return {type: type, id:id, name:track.name}
 }
 
@@ -111,7 +112,6 @@ let parseLogLine = function(line) {
       console.log(areaCode, " not mapped to a track")
     }
   }else if(mainMenu){
-    console.log("first time entering main menu? ",line)
     var areaCode= settings.get("mainMenuId")
     track= getTrack(areaCode)
     //console.log("track is ", track)

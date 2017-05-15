@@ -173,6 +173,7 @@ YoutubePlayer = function(track, startTime, parentContainer, parentController) {
 LocalPlayer = function(track, startTime, parentContainer, parentController) {
 
     this.initialized = false
+    this.playerHeading= false
     this.player = false
     this.ready = false
     this.controller = parentController
@@ -190,15 +191,24 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
         console.log(event)
     }
 
-    this.init = function() {
+    this.init = function(container, callback) {
+       instance.playerHeading= document.createElement("p")
+
+       instance.playerHeading.innerText= "Playing: " + track.id.match(/.*\/([^\/]+)/)[1]
        instance.player = instance.newPlayer()
        instance.player.autoplay = true
        instance.player.loop = true
+       instance.player.controls = true
+
+       document.getElementById(container).appendChild(instance.playerHeading)
+       document.getElementById(container).appendChild(instance.player)
        instance.player.play()
+
     }
 
     this.newPlayer = function() {
         audio = new Audio(this.track.id)
+        console.log(audio)
         instance.initialized = true
         return audio
     }
@@ -221,7 +231,7 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
     }
 
     
-    this.init()
+    this.init(parentContainer)
 
 }
 
