@@ -7,7 +7,6 @@ const {dialog} = require('electron').remote;
 PlayerController = require('./player.js').PlayerController
 
 App = {}
-
 App.playerController = new PlayerController() 
 App.playerController.register("YoutubePlayer", 'youtube')
 App.playerController.register("LocalPlayer", 'local')
@@ -26,6 +25,7 @@ loadSoundtrackFile = function(){
   	ipcRenderer.send("setSoundtrack", fileNames)
   })
 }
+
 
 
 //backend will tell us to play a new track based on zone changes
