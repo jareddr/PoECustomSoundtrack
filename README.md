@@ -88,6 +88,7 @@ I'd recommend using the diablo2.soundtrack file as a base and editing from there
 If you break your diablo2.soundtrack file some how, simply delete it and re-run the app, a fresh one will be generated.
 
 ## Adding Login Screen Song
+This release features a capability to play D2 music in login screen (unfortunately, the music will not be played when you just logout/ change character as there is no suitable pointer in Client.txt yet).
 To add D2 login screen music, simply follow these steps:
 
 In settings.json, add the following 3rd and 4th line (don't forget the coma after soundtrack" in second line)
