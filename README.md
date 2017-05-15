@@ -88,7 +88,7 @@ I'd recommend using the diablo2.soundtrack file as a base and editing from there
 If you break your diablo2.soundtrack file some how, simply delete it and re-run the app, a fresh one will be generated.
 
 ## Adding Login Screen Song
-To add D2 login screen music, run the exe file once(to generate the required 2 json and 1 soundtrack file) and simply follow these steps:
+To add D2 login screen music, simply follow these steps:
 
 In settings.json, add the following 3rd and 4th line (don't forget the coma after soundtrack" in second line)
 ```
@@ -118,6 +118,7 @@ Lastly, in diablo2.soundtrack, add this single first line (mainmenu):
 ```
 
 That's it!
+
 
 
 
