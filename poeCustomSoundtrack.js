@@ -75,7 +75,11 @@ let getTrack = function(areaCode){
   //Look up track_name from soundtrack.map[area_name]
   //Look up track from _.where(soundtrack.tracks, {name: track_name})
   track = false
+
   areaName = worldAreas[areaCode]
+  //console.log(typeof(worldAreas))
+  //console.log(areaCode)
+  //console.log(areaName)
   trackName = soundtrack.map[areaName]
   //if track name is random, choose a random track from the entire track list
   //Otherwise filter the list of tracks by matching names and then randomly choose one that matches
@@ -89,6 +93,10 @@ let getTrack = function(areaCode){
 
 let parseLogLine = function(line) {
   var newArea = line.match(/Entering area (.*)/)
+  var mainMenu = line.match(/Changing to device/) ? true:false
+  //console.log(line)
+  //console.log(mainMenu)
+
   if(newArea){
     //console.log(line)
     var areaCode = newArea[1]
@@ -101,6 +109,17 @@ let parseLogLine = function(line) {
     }
     else{
       console.log(areaCode, " not mapped to a track")
+    }
+  }else if(mainMenu){
+    console.log("first time entering main menu? ",line)
+    var areaCode= settings.get("mainMenuId")
+    track= getTrack(areaCode)
+    //console.log("track is ", track)
+    if(track){
+      if(currentTrackName != track.name){
+        currentTrackName = track.name
+        mainWindow.webContents.send('changeTrack', track);
+      }
     }
   }
 }
@@ -154,10 +173,18 @@ let readJsonFile = function(file)
   try{
     handle = fs.openSync(file, 'r+');
     var data = fs.readFileSync(file, "utf-8")
+    //console.log("inside readjsonfile")
+
     fs.closeSync(handle)
     data = data.replace(/\\+/g, "/")
+    //aswin added this to fix missing quote
+    //var scrubbedJson = data.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": ');
+    //console.log(scrubbedJson)
+    //return scrubbedJson
+
     return JSON.parse(data)
   } catch (err) {
+    console.log(err)
     mainWindow.webContents.send('errorMessage' , "Error loading: " + file + "\n"+ err.message);
     return false
   }
@@ -214,6 +241,7 @@ let setDefaults = function(){
 let loadSoundtrack = function(file){
   var currentSoundtrack = soundtrack
   soundtrack = readJsonFile(file)
+  //console.log("ost ",soundtrack)
   if(!soundtrack){
     soundtrack = currentSoundtrack
     return false
@@ -221,6 +249,15 @@ let loadSoundtrack = function(file){
   return true  
 }
 
+let loadWorldAreas= function(file){
+  var currentWorldAreas= worldAreas
+  worldAreas = readJsonFile(file)
+  if(!worldAreas){
+    worldAreas= currentWorldAreas
+    return false
+  }
+  return true
+}
 
 let getState = function(){
   return {path:settings.get('poePath'),valid:doesLogExist(), volume:checkMusicVolume(), soundtrack:settings.get('soundtrack')}
@@ -232,7 +269,8 @@ let run = function(browserWindow){
   setDefaults()
 
   loadSoundtrack(settings.get('soundtrack'))
-
+  loadWorldAreas(settings.get('worldareas'))
+  //console.log(worldAreas)
   startWatchingLog()
 
   ipcMain.on('setPoePath', function(event, arg){
