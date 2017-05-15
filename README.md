@@ -87,6 +87,40 @@ I'd recommend using the diablo2.soundtrack file as a base and editing from there
 
 If you break your diablo2.soundtrack file some how, simply delete it and re-run the app, a fresh one will be generated.
 
+## Adding Login Screen Song
+To add D2 login screen music, run the exe file once(to generate2 json and 1 soundtrack file) and simply follow these steps:
+
+In settings.json, add the following 3rd and 4th line (don't forget the coma after soundtrack in second line")
+```
+{
+  "poePath": "C:\\Program Files\\Grinding Gear Games\\Path of Exile\\",
+  "soundtrack": "diablo2.soundtrack",
+  "worldareas": "WorldAreas.json",
+  "mainMenuId": "0_menu"
+}
+```
+
+In WorldAreas.json, add this single first line (0_menu):
+```
+{
+	"0_menu": "mainmenu",
+	"1_1_town": "Lioneye's Watch",
+	"1_1_1": "The Twilight Strand",
+```
+
+Lastly, in diablo2.soundtrack, add this single first line (mainmenu):
+
+```
+	"map": {
+		"mainmenu": "intro",
+		"Lioneye's Watch": "rogue_encampment",
+
+```
+
+That's it!
+
+
+
 
 ## Modifying the Code
 
