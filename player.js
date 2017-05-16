@@ -5,7 +5,7 @@ PlayerController  = function() {
 
     this.active_player = false
 
-    this.volume = 75
+    this.volume = 0.75
 
     var instance = this
 
@@ -196,6 +196,7 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
        instance.player.autoplay = true
        instance.player.loop = true
        instance.player.controls = true
+       instance.player.volume = parentController.volume
 
        document.getElementById(container).appendChild(instance.playerHeading)
        document.getElementById(container).appendChild(instance.player)
@@ -205,7 +206,7 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
 
     this.newPlayer = function() {
         audio = new Audio(this.track.id)
-        console.log(audio)
+        //console.log(audio)
         instance.initialized = true
         return audio
     }
@@ -227,6 +228,8 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
 
     this.destroy = function(){
         if(instance.player){
+            parentController.volume= instance.player.volume
+            console.log(parentController.volume)
             instance.player.pause()
             instance.player.remove()
             instance.playerHeading.remove()
