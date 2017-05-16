@@ -1,5 +1,5 @@
 # Path of Exile Custom Soundtrack
-[Downloads here](https://github.com/jareddr/PoECustomSoundtrack/releases)
+[Downloads here](https://github.com/asetiadi001/PoECustomSoundtrack/releases)
 
 [Demo Video](https://www.youtube.com/watch?v=DyfBy1K1Y1s)
 
@@ -86,6 +86,42 @@ The `location` of a track can either be a youtube url (for now the full youtube.
 I'd recommend using the diablo2.soundtrack file as a base and editing from there.  It should contain a reference to every zone in the game and either have it mapped to a specific track or set to random.
 
 If you break your diablo2.soundtrack file some how, simply delete it and re-run the app, a fresh one will be generated.
+
+## Adding Login Screen Song
+This release features a capability to play D2 music in login screen (unfortunately, the music will not be played when you just logout/ change character as there is no suitable pointer in Client.txt yet).
+To add D2 login screen music, simply follow these steps:
+
+In settings.json, add the following 3rd and 4th line (don't forget the coma after soundtrack" in second line)
+```
+{
+  "poePath": "C:\\Program Files\\Grinding Gear Games\\Path of Exile\\",
+  "soundtrack": "diablo2.soundtrack",
+  "worldareas": "WorldAreas.json",
+  "mainMenuId": "0_menu"
+}
+```
+
+In WorldAreas.json, add this single first line (0_menu):
+```
+{
+	"0_menu": "mainmenu",
+	"1_1_town": "Lioneye's Watch",
+	"1_1_1": "The Twilight Strand",
+```
+
+Lastly, in diablo2.soundtrack, add this single first line (mainmenu):
+
+```
+	"map": {
+		"mainmenu": "intro",
+		"Lioneye's Watch": "rogue_encampment",
+
+```
+
+That's it!
+
+
+
 
 
 ## Modifying the Code

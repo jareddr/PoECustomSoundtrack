@@ -6,6 +6,11 @@ body {
     color: #ddd;
     font-size: 18px;
     overflow-x: hidden;
+    background-repeat: no-repeat;
+    //background-position: center;
+    background-color: black;
+    //height: 600px;
+    //width: auto;
 }
 
 .d2button {
@@ -66,5 +71,7 @@ body {
 	margin-top:20px;
 }
 
-
+audio{
+	width: 80vw;
+}
 @font-face {font-family:"Exocet Light";src:url("EXL_____.eot?") format("eot"),url("EXL_____.woff") format("woff"),url("EXL_____.ttf") format("truetype"),url("EXL_____.svg#ExocetLight") format("svg");font-weight:normal;font-style:normal;}

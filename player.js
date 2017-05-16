@@ -5,7 +5,7 @@ PlayerController  = function() {
 
     this.active_player = false
 
-    this.volume = 75
+    this.volume = 0.75
 
     var instance = this
 
@@ -173,12 +173,12 @@ YoutubePlayer = function(track, startTime, parentContainer, parentController) {
 LocalPlayer = function(track, startTime, parentContainer, parentController) {
 
     this.initialized = false
+    this.playerHeading= false
     this.player = false
     this.ready = false
     this.controller = parentController
     this.track = track
     this.startTime = startTime
-    this.id = false
 
     var instance = this
 
@@ -190,18 +190,32 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
         console.log(event)
     }
 
-    this.init = function() {
+    this.init = function(container, callback) {
+       instance.playerHeading= instance.newPlayerHeading()
        instance.player = instance.newPlayer()
        instance.player.autoplay = true
        instance.player.loop = true
+       instance.player.controls = true
+       instance.player.volume = parentController.volume
+
+       document.getElementById(container).appendChild(instance.playerHeading)
+       document.getElementById(container).appendChild(instance.player)
        instance.player.play()
+
     }
 
     this.newPlayer = function() {
         audio = new Audio(this.track.id)
+        //console.log(audio)
         instance.initialized = true
         return audio
     }
+    this.newPlayerHeading = function(){
+    heading= document.createElement("p")
+    heading.innerText= "Playing: " + track.id.match(/.*\/([^\/]+)/)[1]
+    return heading
+    }
+
     this.play = function() {
         instance.player.play()
     }
@@ -214,14 +228,17 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
 
     this.destroy = function(){
         if(instance.player){
+            parentController.volume= instance.player.volume
+            console.log(parentController.volume)
             instance.player.pause()
             instance.player.remove()
+            instance.playerHeading.remove()
         }
         instance.player = {}
     }
 
     
-    this.init()
+    this.init(parentContainer)
 
 }
 
