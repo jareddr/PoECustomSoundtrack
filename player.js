@@ -179,7 +179,6 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
     this.controller = parentController
     this.track = track
     this.startTime = startTime
-    this.id = false
 
     var instance = this
 
@@ -192,9 +191,7 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
     }
 
     this.init = function(container, callback) {
-       instance.playerHeading= document.createElement("p")
-
-       instance.playerHeading.innerText= "Playing: " + track.id.match(/.*\/([^\/]+)/)[1]
+       instance.playerHeading= instance.newPlayerHeading()
        instance.player = instance.newPlayer()
        instance.player.autoplay = true
        instance.player.loop = true
@@ -212,6 +209,12 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
         instance.initialized = true
         return audio
     }
+    this.newPlayerHeading = function(){
+    heading= document.createElement("p")
+    heading.innerText= "Playing: " + track.id.match(/.*\/([^\/]+)/)[1]
+    return heading
+    }
+
     this.play = function() {
         instance.player.play()
     }
@@ -226,6 +229,7 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
         if(instance.player){
             instance.player.pause()
             instance.player.remove()
+            instance.playerHeading.remove()
         }
         instance.player = {}
     }
