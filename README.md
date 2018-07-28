@@ -1,10 +1,6 @@
 # Path of Exile Custom Soundtrack
 ![](pietyd2.png)
 
-**Download**
-
-[Grab the latest release](https://github.com/jareddr/PoECustomSoundtrack/releases/latest)
-
 **You pick the soundtrack for every area in game!**
 
 This app watches the Path of Exile log file to detect area changes and then plays a predefined track from youtube.
@@ -20,6 +16,10 @@ Load up the program, use the crappy interface to choose the folder where you ins
 Turn your in game music volume down to 0
 
 Switch areas in game, you should be hearing Diablo II music!
+
+## Download
+
+[Grab the latest release](https://github.com/jareddr/PoECustomSoundtrack/releases/latest)
 
 ## Will I get banned for using this?
 
