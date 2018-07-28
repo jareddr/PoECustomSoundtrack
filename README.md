@@ -1,6 +1,9 @@
 # Path of Exile Custom Soundtrack
 ![](pietyd2.png)
 
+**Download**
+[Grab the latest release](https://github.com/jareddr/PoECustomSoundtrack/releases/latest)
+
 **You pick the soundtrack for every area in game!**
 
 This app watches the Path of Exile log file to detect area changes and then plays a predefined track from youtube.
