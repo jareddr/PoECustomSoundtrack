@@ -68,14 +68,12 @@ let randomElement = function(arr){
   return arr ? arr[Math.floor(Math.random()*arr.length)] : false;
 }
 
-let getTrack = function(areaCode){
+let getTrack = function(areaName){
   //How to find a track
-  //Get area_code from log
-  //Look up area_name from worldAreas[area_code]
+  //Get area_name from log
   //Look up track_name from soundtrack.map[area_name]
   //Look up track from _.where(soundtrack.tracks, {name: track_name})
   track = false
-  areaName = worldAreas[areaCode]
   trackName = soundtrack.map[areaName]
   //if track name is random, choose a random track from the entire track list
   //Otherwise filter the list of tracks by matching names and then randomly choose one that matches
@@ -88,7 +86,7 @@ let getTrack = function(areaCode){
 
 
 let parseLogLine = function(line) {
-  var newArea = line.match(/Entering area (.*)/)
+  var newArea = line.match(/You have entered ([^.]*)./)
   if(newArea){
     //console.log(line)
     var areaCode = newArea[1]
