@@ -19,4 +19,4 @@ Switch areas in game, you should be hearing Diablo II music!
 
 ## Will I get banned for using this?
 
-I won't say yes or no, but given that this program's only interaction with Path of Exile is reading a text file from the log folder, I'd say the chances aren't very high.
+This program merely monitors the path of exile client log file on your computer.  It does not modify or interact with the executable or running program in anyway.  There are many, many other PoE addon tools in regular use that also monitor the log file.  Given these facts, I highly doubt you will get banned for using this program.
