@@ -86,9 +86,16 @@ let getTrack = function(areaName){
 
 
 let parseLogLine = function(line) {
+  //watch log file for area changes
   var newArea = line.match(/You have entered ([^.]*)./)
+  
+  //also watch for poe to boot up and play login window music
+  var loginWindow = line.match(/LOG FILE OPENING/)
+  if(loginWindow){
+    newArea = ["login", "login"]
+  }
+
   if(newArea){
-    //console.log(line)
     var areaCode = newArea[1]
     track = getTrack(areaCode)
     if(track){

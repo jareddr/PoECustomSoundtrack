@@ -36,8 +36,9 @@ let soundtrack = {
 	 ],
 
 	"map":	{
+	    "login": "intro",
 	    "Lioneye's Watch": "rogue_encampment",
-	    "The Twilight Strand": "options",
+	    "The Twilight Strand": "wild",
 	    "The Coast": "wild",
 	    "The Tidal Island": "wild",
 	    "The Mud Flats": "wild",
