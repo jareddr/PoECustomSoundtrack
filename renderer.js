@@ -27,6 +27,9 @@ loadSoundtrackFile = function(){
   })
 }
 
+handleVolumeChange = function(volume){
+	App.playerController.setVolume(volume)
+}
 
 //backend will tell us to play a new track based on zone changes
 ipcRenderer.on('changeTrack', function(event,data){
@@ -45,6 +48,7 @@ ipcRenderer.on('updateState', function(event,data){
 	document.getElementById('poe-path-invalid').style.display = data.valid ? "none" : "inline"
 	document.getElementById('volume-valid').style.display = data.volume === 0 ? "inline" : "none"
 	document.getElementById('volume-invalid').style.display = data.volume === 0 ? "none" : "inline"
+	//console.log(App.playerController.getVolume())
 
 })
 

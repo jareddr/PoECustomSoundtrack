@@ -42,6 +42,15 @@ PlayerController  = function() {
         instance.players[type] = playerConstructor
     }
 
+    this.getVolume = function(){
+        return this.active_player ? this.active_player.getVolume() : 0;
+    }
+    
+    this.setVolume = function(volume){
+        this.volume = volume
+        if(this.active_player) this.active_player.setVolume(volume);
+    }    
+
 }
 
 YoutubePlayer = function(track, startTime, parentContainer, parentController) {
@@ -155,6 +164,13 @@ YoutubePlayer = function(track, startTime, parentContainer, parentController) {
         }, 10)
 
     }
+    this.setVolume = function(level) {
+        console.log("youtube volume", level)
+        instance.player.setVolume(level)
+    }
+    this.getVolume = function() {
+        return instance.player.getVolume()
+    }    
     this.destroy = function(){
     	if(instance.player)
     		instance.player.destroy()
@@ -194,6 +210,7 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
        instance.player = instance.newPlayer()
        instance.player.autoplay = true
        instance.player.loop = true
+       instance.setVolume(this.controller.volume)
        instance.player.play()
     }
 
@@ -211,7 +228,12 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
     this.setTrack = function(id, starting_time) {
         this.player.load(id)        
     }
-
+    this.setVolume = function(level) {
+        instance.player.volume = level/100;
+    }
+    this.getVolume = function() {
+        return instance.player.volume
+    }
     this.destroy = function(){
         if(instance.player){
             instance.player.pause()

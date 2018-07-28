@@ -64,7 +64,30 @@ body {
 
 #youtube-parent-container{
 	margin-top:20px;
+	height:220px;
 }
 
+.volume-glyph{
+	vertical-align: middle;
+}
+
+#volume-slider{
+	width:200px;
+	-webkit-appearance: none;
+    height: 8px;
+    border-radius: 5px;   
+    background: #d3d3d3;
+    outline: none;
+}
+
+#volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%; 
+    background: green;
+    cursor: pointer;
+}
 
 @font-face {font-family:"Exocet Light";src:url("EXL_____.eot?") format("eot"),url("EXL_____.woff") format("woff"),url("EXL_____.ttf") format("truetype"),url("EXL_____.svg#ExocetLight") format("svg");font-weight:normal;font-style:normal;}
