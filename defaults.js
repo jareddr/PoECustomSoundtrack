@@ -123,7 +123,7 @@ let soundtrack = {
 	    "Shavronne's Tower": "monastery",
 	    "The Beacon": "tristram",
 	    "The Brine King's Reef": "crypt",
-	    "The Bridge Encampment": "kurast",
+	    "The Bridge Encampment": "kurast_docks",
 	    "The Crypt": "kurast_sewers",
 	    "Maligaro's Sanctum": "harem",
 	    "The Ashen Fields": "jungle",
