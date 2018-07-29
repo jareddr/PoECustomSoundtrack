@@ -23,7 +23,7 @@ PlayerController  = function() {
 
     this.setTrack = function(track, starting_position) {
         if(instance.active_player){
-        	instance.active_player.destroy()
+        	instance.active_player.fadeout()
         	delete instance.active_player
         }
         instance.active_player = new window[instance.players[track.type]](track, starting_position, track.type + "-parent-container", instance)
@@ -170,7 +170,18 @@ YoutubePlayer = function(track, startTime, parentContainer, parentController) {
     }
     this.getVolume = function() {
         return instance.player.getVolume()
-    }    
+    }
+    this.fadeout = async function(){
+        //hide current player
+        instance.player.setSize(0,0);
+        let sleep = ms => new Promise(res => setTimeout(res, ms));
+        while(instance.getVolume() > 1){
+            instance.setVolume(instance.getVolume()*0.8)
+            await sleep(300)
+        }
+        instance.destroy();
+    }
+
     this.destroy = function(){
     	if(instance.player)
     		instance.player.destroy()
@@ -229,10 +240,18 @@ LocalPlayer = function(track, startTime, parentContainer, parentController) {
         this.player.load(id)        
     }
     this.setVolume = function(level) {
-        instance.player.volume = level/100;
+        instance.player.volume = level/100
     }
     this.getVolume = function() {
-        return instance.player.volume
+        return instance.player.volume*100
+    }
+    this.fadeout = async function(){
+        let sleep = ms => new Promise(res => setTimeout(res, ms));
+        while(instance.getVolume() > 1){
+            instance.setVolume(instance.getVolume()*0.8)
+            await sleep(300)
+        }
+        instance.destroy();
     }
     this.destroy = function(){
         if(instance.player){
