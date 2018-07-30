@@ -6,12 +6,17 @@
   "scripts": {
     "start": "electron main.js"
   },
+  "eslintConfig": {
+    "env": {
+        "browser": true,
+        "node": true
+    }
+  },
   "author": "JroxStarblade",
   "license": "CC0-1.0",
   "dependencies": {
     "electron-settings": "^1.1.1",
     "file-tail": "^0.3.0",
-    "ipc": "0.0.1",
-    "lodash": "^4.13.1"
+    "ipc": "0.0.1"
   }
 }

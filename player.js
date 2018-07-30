@@ -1,273 +1,247 @@
-PlayerController  = function() {
-    this.players = {}
+class PlayerController {
+  constructor() {
+    this.players = {};
+    this.state = false;
+    this.active_player = false;
+    this.volume = 75;
+  }
 
-    this.state = false
-
-    this.active_player = false
-
-    this.volume = 75
-
-    var instance = this
-
-    this.play = function() {
-        console.log("Called: play")
-        App.state.listening.set(true)
-      	instance.playCurrentTrack()
+  pause() {
+    if (this.active_player) {
+      this.active_player.pause();
     }
+  }
 
-    this.pause = function() {
-        if(instance.active_player){
-        	instance.active_player.pause()
-	    }
+  setTrack(track, startingPosition) {
+    if (this.active_player) {
+      this.active_player.fadeout();
+      delete this.active_player;
     }
+    this.active_player = new this.players[track.type](track, startingPosition, `${track.type}-parent-container`, this);
+  }
 
-    this.setTrack = function(track, starting_position) {
-        if(instance.active_player){
-        	instance.active_player.fadeout()
-        	delete instance.active_player
-        }
-        instance.active_player = new window[instance.players[track.type]](track, starting_position, track.type + "-parent-container", instance)
-    }
+  trackEnded() {
+    this.active_player.play();
+  }
 
-    this.trackEnded = function() {
-        console.log('trackEnded')
-        this.active_player.play()
-    }
+  playTrack(track, startingPosition) {
+    this.setTrack(track, startingPosition);
+  }
 
-    this.playTrack = function(track, startingPosition) {
-        console.log("Called: playCurrentTrack", track)
-        instance.setTrack(track, startingPosition)
-    }
-    this.register = function(playerConstructor, type) {
-        instance.players[type] = playerConstructor
-    }
+  register(playerConstructor, type) {
+    this.players[type] = playerConstructor;
+  }
 
-    this.getVolume = function(){
-        return this.active_player ? this.active_player.getVolume() : 0;
-    }
-    
-    this.setVolume = function(volume){
-        this.volume = volume
-        if(this.active_player) this.active_player.setVolume(volume);
-    }    
+  getVolume() {
+    return this.active_player ? this.active_player.getVolume() : 0;
+  }
+
+  setVolume(volume) {
+    this.volume = volume;
+    if (this.active_player) this.active_player.setVolume(volume);
+  }
 
 }
 
-YoutubePlayer = function(track, startTime, parentContainer, parentController) {
+class YoutubePlayer {
+  constructor(track, startTime, parentContainer, parentController) {
+    this.initialized = false;
+    this.player = false;
+    this.element = false;
+    this.container = false;
+    this.ready = false;
+    this.controller = parentController;
+    this.track = track;
+    this.startTime = startTime;
+    this.pollTimer = false;
+    this.id = false;
+    this.trackError = false;
+    this.init(parentContainer);
+  }
 
-    this.initialized = false
-    this.player = false
-    this.element = false
-    this.container = false
-    this.ready = false
-	this.controller = parentController
-    this.track = track
-    this.startTime = startTime
-    this.pollTimer = false
-    this.id = false
-    this.trackError = false
+  setController(controller) {
+    this.controller = controller;
+  }
 
-    var instance = this
+  onPlayerReady() {
+    this.ready = true;
+    if (this.track) {
+      this.setTrack(this.track.id, this.startTime);
+    }
+  }
 
-    this.setController = function(controller){
-        instance.controller = controller
+  onPlayerStateChange(event) {
+    if (event.data === 0) {
+      this.controller.trackEnded();
+    }
+  }
+
+  poll() {
+    if (this.getState() === 1) {
+      this.updateProgress();
+    }
+  }
+
+  init(container) {
+    this.container = this.newPlayerContainer(container);
+    this.element = this.container;
+
+    if ('YT' in window) {
+      window.YT.ready(() => this.newPlayer());
+    } else {
+      window.onYouTubeIframeAPIReady = () => this.newPlayer();
     }
 
-    this.onPlayerReady = function(event) {
-        instance.ready = true;
-        if(instance.track){
-        	instance.setTrack(instance.track.id, instance.startTime)
-        }
+    if (!('YT' in window)) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
-    this.onPlayerStateChange = function(event) {
-        if (event.data === 0) {
-           instance.controller.trackEnded()
-        }
+  }
+
+  newPlayerContainer(pc) {
+    const div = document.createElement('DIV');
+    this.id = Math.floor(Math.random() * 10000);
+    div.id = this.id;
+    document.getElementById(pc).appendChild(div);
+
+    return div;
+  }
+
+  newPlayer() {
+    const playerContainer = this.container;
+    this.player = new window.YT.Player(playerContainer, {
+      height: '200',
+      width: '100%',
+      playerVars: {
+        controls: 0,
+        playsinline: 1,
+        loop: 1,
+      },
+      events: {
+        onReady: () => this.onPlayerReady(),
+        onStateChange: event => this.onPlayerStateChange(event),
+      },
+    });
+    this.element = this.container;
+    this.initialized = true;
+  }
+  play() {
+    this.player.playVideo();
+  }
+  pause() {
+    this.player.pauseVideo();
+  }
+  setTrack(id, startingTime) {
+    // hack to make html5 player work
+    setTimeout(() => {
+      this.player.loadVideoById({
+        videoId: id,
+        startSeconds: startingTime,
+      });
+      this.player.setVolume(this.controller.volume);
+      this.play();
+    }, 10);
+  }
+  setVolume(level) {
+    this.player.setVolume(level);
+  }
+  getVolume() {
+    return this.player.getVolume();
+  }
+
+  async fadeout() {
+    // hide current player
+    this.player.setSize(0, 0);
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+    while (this.getVolume() > 1) {
+      this.setVolume(this.getVolume() * 0.8);
+      /* eslint-disable */
+      await sleep(300);
+      /* eslint-enable */
+    }
+    this.destroy();
+  }
+
+  destroy() {
+    if (this.player) {
+      this.player.destroy();
+    }
+    if (this.element) {
+      this.element.remove();
     }
 
-    this.poll = function() {
-        if (instance.getState() == 1) {
-            instance.updateProgress()
-        }
-    }
-
-    this.onError = function(event){
-        console.log(event)
-    }
-    this.init = function(container, callback) {
-    	instance.container = instance.newPlayerContainer(container)
-    	instance.element = instance.container
-        
-        if ('YT' in window) {
-            window.YT.ready(instance.newPlayer)
-        } else {
-            window.onYouTubeIframeAPIReady = instance.newPlayer
-        }
-
-        console.log('init = youtube')
-        if(!('YT' in window)){
-        	console.log("adding youtube script")
-	        var tag = document.createElement('script')
-	        tag.src = "https://www.youtube.com/iframe_api"
-	        var firstScriptTag = document.getElementsByTagName('script')[0]
-	        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
-        }
-
-    }
-
-    this.newPlayerContainer = function(parentContainer){
-    	var div = document.createElement("DIV")
-    	instance.id = Math.floor(Math.random(1000000))
-    	div.id = instance.id
-    	document.getElementById(parentContainer).appendChild(div)
-
-    	return div
-    }
-
-    this.newPlayer = function() {
-        instance.player = new YT.Player(instance.container, {
-            height: '200',
-            width: '100%',
-            playerVars: {
-                'controls': 1,
-                'playsinline': 1,
-                'loop': 1
-            },
-            events: {
-                'onReady': instance.onPlayerReady,
-                'onStateChange': instance.onPlayerStateChange,
-                'onError': instance.onError
-            }
-        })
-        instance.element = instance.container
-        instance.initialized = true
-    }
-    this.play = function() {
-        instance.player.playVideo()
-    }
-    this.pause = function() {
-        instance.player.pauseVideo()
-    }
-    this.setTrack = function(id, starting_time) {
-        console.log({
-            videoId: id,
-            startSeconds: starting_time
-        })
-        //hack to make html5 player work
-        setTimeout(function() {
-            instance.player.loadVideoById({
-                videoId: id,
-                startSeconds: starting_time
-            })
-            instance.player.setVolume(instance.controller.volume)
-            instance.play()
-        }, 10)
-
-    }
-    this.setVolume = function(level) {
-        console.log("youtube volume", level)
-        instance.player.setVolume(level)
-    }
-    this.getVolume = function() {
-        return instance.player.getVolume()
-    }
-    this.fadeout = async function(){
-        //hide current player
-        instance.player.setSize(0,0);
-        let sleep = ms => new Promise(res => setTimeout(res, ms));
-        while(instance.getVolume() > 1){
-            instance.setVolume(instance.getVolume()*0.8)
-            await sleep(300)
-        }
-        instance.destroy();
-    }
-
-    this.destroy = function(){
-    	if(instance.player)
-    		instance.player.destroy()
-    	if(instance.element)
-        	instance.element.remove()
-        
-        instance.player = {}
-        instance.element = null
-    }
-
-	
-	this.init(parentContainer)
-
+    this.player = {};
+    this.element = null;
+  }
 }
 
-LocalPlayer = function(track, startTime, parentContainer, parentController) {
+class LocalPlayer {
+  constructor(track, startTime, parentContainer, parentController) {
+    this.initialized = false;
+    this.player = false;
+    this.ready = false;
+    this.controller = parentController;
+    this.track = track;
+    this.startTime = startTime;
+    this.id = false;
+    this.init(parentContainer);
+  }
 
-    this.initialized = false
-    this.player = false
-    this.ready = false
-    this.controller = parentController
-    this.track = track
-    this.startTime = startTime
-    this.id = false
+  setController(controller) {
+    this.controller = controller;
+  }
 
-    var instance = this
+  init() {
+    this.player = this.newPlayer();
+    this.player.autoplay = true;
+    this.player.loop = true;
+    this.setVolume(this.controller.volume);
+    this.player.play();
+  }
 
-    this.setController = function(controller){
-        instance.controller = controller
+  newPlayer() {
+    const audio = new Audio(this.track.id);
+    this.initialized = true;
+    return audio;
+  }
+  play() {
+    this.player.play();
+  }
+  pause() {
+    this.player.pause();
+  }
+  setTrack(id) {
+    this.player.load(id);
+  }
+  setVolume(level) {
+    this.player.volume = level / 100;
+  }
+  getVolume() {
+    return this.player.volume * 100;
+  }
+  async fadeout() {
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+    while (this.getVolume() > 1) {
+      this.setVolume(this.getVolume() * 0.8);
+      /* eslint-disable */
+      await sleep(300);
+      /* eslint-enable */
     }
-
-    this.onError = function(event){
-        console.log(event)
+    this.destroy();
+  }
+  destroy() {
+    if (this.player) {
+      this.player.pause();
+      this.player.remove();
     }
-
-    this.init = function() {
-       instance.player = instance.newPlayer()
-       instance.player.autoplay = true
-       instance.player.loop = true
-       instance.setVolume(this.controller.volume)
-       instance.player.play()
-    }
-
-    this.newPlayer = function() {
-        audio = new Audio(this.track.id)
-        instance.initialized = true
-        return audio
-    }
-    this.play = function() {
-        instance.player.play()
-    }
-    this.pause = function() {
-        instance.player.pause()
-    }
-    this.setTrack = function(id, starting_time) {
-        this.player.load(id)        
-    }
-    this.setVolume = function(level) {
-        instance.player.volume = level/100
-    }
-    this.getVolume = function() {
-        return instance.player.volume*100
-    }
-    this.fadeout = async function(){
-        let sleep = ms => new Promise(res => setTimeout(res, ms));
-        while(instance.getVolume() > 1){
-            instance.setVolume(instance.getVolume()*0.8)
-            await sleep(300)
-        }
-        instance.destroy();
-    }
-    this.destroy = function(){
-        if(instance.player){
-            instance.player.pause()
-            instance.player.remove()
-        }
-        instance.player = {}
-    }
-
-    
-    this.init()
-
+    this.player = {};
+  }
 }
 
 module.exports = {
-    PlayerController: PlayerController,
-    YoutubePlayer: YoutubePlayer,
-    LocalPlayer: LocalPlayer
-}
+  PlayerController,
+  YoutubePlayer,
+  LocalPlayer,
+};
