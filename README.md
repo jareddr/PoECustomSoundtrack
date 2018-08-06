@@ -1,6 +1,9 @@
 # Path of Exile Custom Soundtrack
 ![](pietyd2.png)
 
+Useage and customization guide here: https://www.youtube.com/watch?v=DyfBy1K1Y1s
+
+
 **You pick the soundtrack for every area in game!**
 
 This app watches the Path of Exile log file to detect area changes and then plays a predefined track from youtube.
