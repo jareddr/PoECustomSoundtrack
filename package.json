@@ -1,6 +1,6 @@
 {
-  "name": "poe-2-d2",
-  "version": "1.0.0",
+  "name": "PoECustomSoundtrack",
+  "version": "1.2.0",
   "description": "A small app to replace path of exile music with that of diablo",
   "main": "main.js",
   "scripts": {
@@ -8,15 +8,20 @@
   },
   "eslintConfig": {
     "env": {
-        "browser": true,
-        "node": true
+      "browser": true,
+      "node": true
     }
   },
-  "author": "JroxStarblade",
+  "author": "jareddr",
   "license": "CC0-1.0",
   "dependencies": {
     "electron-settings": "^1.1.1",
+    "electron-updater": "^3.0.3",
     "file-tail": "^0.3.0",
     "ipc": "0.0.1"
+  },
+  "devDependencies": {
+    "electron-builder": "~5.12.X",
+    "electron-prebuilt": "~1.2.X"
   }
 }
