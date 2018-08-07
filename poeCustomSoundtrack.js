@@ -17,6 +17,9 @@ const settings = new ElectronSettings({
 let mainWindow;
 let currentTrackName = false;
 let ft;
+let isUpdateAvailable = false;
+let isUpdateDownloading = false;
+let autoUpdater = false;
 
 // const worldAreas = defaults.worldAreas;
 let soundtrack = defaults.soundtrack;
@@ -227,7 +230,18 @@ function getState() {
     valid: doesLogExist(),
     volume: checkMusicVolume(),
     soundtrack: settings.get('soundtrack'),
+    isUpdateAvailable,
+    isUpdateDownloading
   };
+}
+
+function updateAvailable(updater) {
+  isUpdateAvailable = true;
+  autoUpdater = updater;
+}
+
+function updateDownloading(){
+  isUpdateDownloading = true
 }
 
 function run(browserWindow) {
@@ -262,8 +276,14 @@ function run(browserWindow) {
   ipcMain.on('updateState', (event) => {
     event.sender.send('updateState', getState());
   });
+
+  ipcMain.on('installUpdate', (event, arg) => {
+    if(autoUpdater) autoUpdater.downloadUpdate();
+  })
 }
 
 module.exports = {
   run,
+  updateAvailable,
+  updateDownloading
 };

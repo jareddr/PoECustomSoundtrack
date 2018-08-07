@@ -12,7 +12,7 @@
         <i id="poe-path-valid" class="material-icons dp48" style="float:right;color:green;display:none" title="Path of Exile Detected!">check_circle</i>
         <i id="poe-path-invalid" class="material-icons" style="float:right; color:red; cursor:pointer;display:none" title="Cannot locate path of exile client log.">error</i>
       </div>
-      <a href="#" class="d2button" onclick="loadLogFile()">...</a>
+      <a href="#" class="d2button float-left" onclick="loadLogFile()">...</a>
       <div id="poe-path" onclick="loadLogFile()">C:/Games/Path of Exile</div>
       
     </div>
@@ -28,7 +28,7 @@
       <div>
         (111) Select soundtrack
       </div>
-      <a href="#" class="d2button" onclick="loadSoundtrackFile()">...</a>
+      <a href="#" class="d2button float-left" onclick="loadSoundtrackFile()">...</a>
       <div id="soundtrack-name" onclick="loadSoundtrackFile()">Load soundtrack</div>
     </div>
     <div id="youtube-parent-container"></div>
@@ -37,10 +37,13 @@
       <input type="range" min="0" max="100" value="75" step="1" class="slider" id="volume-slider" onchange="handleVolumeChange(this.value)">
       <i class="material-icons volume-glyph">volume_up</i>
     </div>
+    <div id='update-container'>
+     <span id='update-text'>Update available!</span> <span id='update-buttons'><button class='d2button btn-primary' onClick='installUpdate()'>Install</button> <button onClick='ignoreUpdate()' class='d2button btn-secondary'>Ignore</button></span>
+    </div>
   
 
   <script>
-    const { loadLogFile, handleVolumeChange, loadSoundtrackFile } = require('./renderer.js');
+    const { loadLogFile, handleVolumeChange, loadSoundtrackFile, installUpdate, ignoreUpdate } = require('./renderer.js');
   </script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="stylesheet" href="style.css">

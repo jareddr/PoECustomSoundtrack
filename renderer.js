@@ -15,6 +15,8 @@ const App = {};
 App.playerController = new PlayerController();
 App.playerController.register(YoutubePlayer, 'youtube');
 App.playerController.register(LocalPlayer, 'local');
+App.updateAvailable = false;
+App.ignoreUpdate = false;
 
 
 // handle file select dialog
@@ -41,14 +43,7 @@ function handleVolumeChange(volume) {
   App.playerController.setVolume(volume);
 }
 
-
-// backend will tell us to play a new track based on zone changes
-ipcRenderer.on('changeTrack', (event, data) => {
-  App.playerController.playTrack(data, 0);
-});
-
-// backend will send us state values, use it to stupidly update frontend
-ipcRenderer.on('updateState', (event, data) => {
+function updateState(event, data){
   document.getElementById('poe-path').innerText = data.path.replace(/\\/g, '/');
   let soundtrackName = data.soundtrack.replace(/\\/g, '/');
   if (soundtrackName.match(/([^/]+)\.soundtrack$/)) {
@@ -59,7 +54,28 @@ ipcRenderer.on('updateState', (event, data) => {
   document.getElementById('poe-path-invalid').style.display = data.valid ? 'none' : 'inline';
   document.getElementById('volume-valid').style.display = data.volume === 0 ? 'inline' : 'none';
   document.getElementById('volume-invalid').style.display = data.volume === 0 ? 'none' : 'inline';
+  document.getElementById('update-container').style.display = data.isUpdateAvailable && !App.ignoreUpdate ? 'inline' : 'none';
+  document.getElementById('update-buttons').style.display = !data.isUpdateDownloading ? 'inline' : 'none';
+  document.getElementById('update-text').innerHTML = !data.isUpdateDownloading ? 'Update Available!' : 'Update Downloading!';
+  
+}
+
+function installUpdate(){
+  ipcRenderer.send('installUpdate');
+}
+
+function ignoreUpdate(){
+  App.ignoreUpdate = true;
+  ipcRenderer.send('updateState');
+}
+
+// backend will tell us to play a new track based on zone changes
+ipcRenderer.on('changeTrack', (event, data) => {
+  App.playerController.playTrack(data, 0);
 });
+
+// backend will send us state values, use it to stupidly update frontend
+ipcRenderer.on('updateState', updateState );
 
 // tell backend we'd like to update our state
 ipcRenderer.send('updateState');
@@ -78,4 +94,6 @@ module.exports = {
   loadLogFile,
   handleVolumeChange,
   loadSoundtrackFile,
+  installUpdate,
+  ignoreUpdate
 };

@@ -22,8 +22,12 @@ body {
 	padding:2px 3px;
 	margin-top:5px;
 	text-decoration:none;
+}
+
+.float-left{
 	float:left;
 }
+
 .d2button:hover {
 	background-color:#9e998b;
 }
@@ -89,5 +93,25 @@ body {
     background: green;
     cursor: pointer;
 }
+
+#update-container{
+	font-size: 0.7em;
+	padding: .7em;
+	margin: 0px;
+	background-color: rgba(70,150,150,0.9);
+	position: absolute;
+	bottom: 0px;
+	width: 100%;
+	left: 0px;
+}
+
+.btn-primary{
+	background-color:#0ba5a5;
+}
+
+.btn-secondary{
+	background-color:#d82f2f;
+}
+
 
 @font-face {font-family:"Exocet Light";src:url("EXL_____.eot?") format("eot"),url("EXL_____.woff") format("woff"),url("EXL_____.ttf") format("truetype"),url("EXL_____.svg#ExocetLight") format("svg");font-weight:normal;font-style:normal;}
