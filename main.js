@@ -19,7 +19,7 @@ let mainWindow;
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 1320,
+    width: 320,
     height: 500,
     resizable: false,
     minimizable: false,
@@ -33,7 +33,7 @@ function createWindow() {
   mainWindow.loadURL(`file://${__dirname}/index.html`);
 
   // Open the DevTools.
-   mainWindow.webContents.openDevTools();
+   //mainWindow.webContents.openDevTools();
 
   poeCustomSoundtrack.run(mainWindow);
 
