@@ -34,7 +34,7 @@
     <div id="youtube-parent-container"></div>
     <div id="volume-control-container">
       <i class="material-icons volume-glyph">volume_down</i>
-      <input type="range" min="0" max="100" value="75" step="1" class="slider" id="volume-slider" onchange="handleVolumeChange(this.value)">
+      <input type="range" min="0" max="100" value="75" step="1" class="slider" id="volume-slider" onchange="handleVolumeChange(this.value)" oninput="handleVolumeChange(this.value)">
       <i class="material-icons volume-glyph">volume_up</i>
     </div>
     <div id='update-container'>

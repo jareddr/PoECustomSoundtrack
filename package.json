@@ -1,6 +1,6 @@
 {
   "name": "PoECustomSoundtrack",
-  "version": "1.3.0",
+  "version": "1.4.1",
   "description": "A small app to replace path of exile music with that of diablo",
   "main": "main.js",
   "scripts": {
