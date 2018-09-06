@@ -590,7 +590,8 @@ let soundtrack = {
 	    "Light Test": "random",
 	    "Rhoa Fight": "random",
 	    "Arrow Test": "random",
-	    "RoomTest": "random"
+		"RoomTest": "random",
+		"Azurite Mine": "random"
 	}
 }  
 
