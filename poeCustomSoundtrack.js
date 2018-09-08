@@ -4,15 +4,11 @@ const {
 const defaults = require('./defaults.js');
 const fs = require('fs');
 const fileTail = require('file-tail');
+const psList = require('ps-list');
 
 const DEFAULT_POE_PATH = 'C:\\Program Files\\Grinding Gear Games\\Path of Exile\\';
 //  load settings from disk
-const ElectronSettings = require('electron-settings');
-
-const settings = new ElectronSettings({
-  configDirPath: './',
-  configFilename: 'settings',
-});
+const settings = require('electron-settings');
 
 let mainWindow;
 let currentTrackName = false;
@@ -20,9 +16,18 @@ let ft;
 let isUpdateAvailable = false;
 let isUpdateDownloading = false;
 let autoUpdater = false;
+let isPoERunning = false;
 
 // const worldAreas = defaults.worldAreas;
 let soundtrack = defaults.soundtrack;
+
+function updateRunningStatus(){
+  psList().then(function(ps){
+    const running = ps.filter(proc => proc.name.match(/pathofexile/i));
+    isPoERunning = running.length > 0;
+  })
+}
+
 
 
 function getTrackType(location) {
@@ -231,7 +236,8 @@ function getState() {
     volume: checkMusicVolume(),
     soundtrack: settings.get('soundtrack'),
     isUpdateAvailable,
-    isUpdateDownloading
+    isUpdateDownloading,
+    isPoERunning
   };
 }
 
@@ -274,6 +280,7 @@ function run(browserWindow) {
   });
 
   ipcMain.on('updateState', (event) => {
+    updateRunningStatus();
     event.sender.send('updateState', getState());
   });
 

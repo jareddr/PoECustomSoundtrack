@@ -1,6 +1,6 @@
 {
   "name": "PoECustomSoundtrack",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "A small app to replace path of exile music with that of diablo",
   "main": "main.js",
   "scripts": {
@@ -16,13 +16,14 @@
   "license": "CC0-1.0",
   "dependencies": {
     "electron-log": "^2.2.16",
-    "electron-settings": "^1.1.1",
+    "electron-settings": "^3.2.0",
     "electron-updater": "^3.0.3",
     "file-tail": "^0.3.0",
-    "ipc": "0.0.1"
+    "ipc": "0.0.1",
+    "ps-list": "^5.0.0"
   },
   "devDependencies": {
     "electron-builder": "latest",
-    "electron-prebuilt": "latest"
+    "electron": "latest"
   }
 }

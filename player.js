@@ -12,6 +12,12 @@ class PlayerController {
     }
   }
 
+  fadeout() {
+    if (this.active_player) {
+      this.active_player.fadeout();
+    }
+  }
+
   setTrack(track, startingPosition) {
     if (this.active_player) {
       this.active_player.fadeout();

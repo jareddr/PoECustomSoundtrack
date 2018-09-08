@@ -17,6 +17,7 @@ App.playerController.register(YoutubePlayer, 'youtube');
 App.playerController.register(LocalPlayer, 'local');
 App.updateAvailable = false;
 App.ignoreUpdate = false;
+App.isPlaying = false;
 
 
 // handle file select dialog
@@ -57,6 +58,10 @@ function updateState(event, data){
   document.getElementById('update-container').style.display = data.isUpdateAvailable && !App.ignoreUpdate ? 'inline' : 'none';
   document.getElementById('update-buttons').style.display = !data.isUpdateDownloading ? 'inline' : 'none';
   document.getElementById('update-text').innerHTML = !data.isUpdateDownloading ? 'Update Available!' : 'Update Downloading!';
+
+  if(!data.isPoERunning && App.isPlaying){
+    App.playerController.fadeout();
+  }
   
 }
 
@@ -72,6 +77,7 @@ function ignoreUpdate(){
 // backend will tell us to play a new track based on zone changes
 ipcRenderer.on('changeTrack', (event, data) => {
   App.playerController.playTrack(data, 0);
+  App.isPlaying = true;
 });
 
 // backend will send us state values, use it to stupidly update frontend

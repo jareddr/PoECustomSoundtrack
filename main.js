@@ -5,6 +5,7 @@ autoUpdater.logger = require('electron-log');
 //autoUpdater.updateConfigPath = 'dev-app-update.yml';
 
 autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.autoDownload = false;
 
 // Module to control application life.
 const app = electron.app;
