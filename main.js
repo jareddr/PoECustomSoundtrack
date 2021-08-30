@@ -27,6 +27,12 @@ function createWindow() {
     maximizable: false,
     title: 'PoE Custom Soundtrack',
     icon: './piety.ico',
+    webPreferences: {
+      nodeIntegration: true,
+      nodeIntegrationInWorker: true,
+      contextIsolation: false,
+      enableRemoteModule: true,
+    }
   });
 
   mainWindow.setMenu(null);
@@ -34,7 +40,7 @@ function createWindow() {
   mainWindow.loadURL(`file://${__dirname}/index.html`);
 
   // Open the DevTools.
-   //mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 
   poeCustomSoundtrack.run(mainWindow);
 
