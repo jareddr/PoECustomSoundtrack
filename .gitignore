@@ -3,3 +3,6 @@ TrackList.json
 WorldAreas.json
 diablo2.soundtrack
 settings.json
+build
+dist
+electron-builder.yaml

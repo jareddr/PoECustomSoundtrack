@@ -23,7 +23,7 @@
     "ps-list": "^5.0.0"
   },
   "devDependencies": {
-    "electron-builder": "latest",
-    "electron": "latest"
+    "electron-builder": "~20.28.4",
+    "electron": "~2.0.8"
   }
 }
