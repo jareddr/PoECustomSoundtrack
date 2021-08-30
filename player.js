@@ -3,7 +3,7 @@ class PlayerController {
     this.players = {};
     this.state = false;
     this.active_player = false;
-    this.volume = 75;
+    this.volume = 25;
   }
 
   pause() {

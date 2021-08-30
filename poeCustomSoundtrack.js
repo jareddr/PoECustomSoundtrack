@@ -17,6 +17,7 @@ let isUpdateAvailable = false;
 let isUpdateDownloading = false;
 let autoUpdater = false;
 let isPoERunning = false;
+let playerVolume = 25;
 
 // const worldAreas = defaults.worldAreas;
 let soundtrack = defaults.soundtrack;
@@ -216,6 +217,11 @@ function setDefaults() {
   if (!settings.get('soundtrack')) {
     settings.set('soundtrack', 'diablo2.soundtrack');
   }
+
+    // define player volume if not set
+    if (!settings.get('playerVolume')) {
+      settings.set('playerVolume', '25');
+    }
 }
 
 function loadSoundtrack(file) {
@@ -235,6 +241,7 @@ function getState() {
     valid: doesLogExist(),
     volume: checkMusicVolume(),
     soundtrack: settings.get('soundtrack'),
+    playerVolume: settings.get('playerVolume'),
     isUpdateAvailable,
     isUpdateDownloading,
     isPoERunning
@@ -276,6 +283,12 @@ function run(browserWindow) {
         settings.set('soundtrack', arg[0]);
         event.sender.send('updateState', getState());
       }
+    }
+  });
+
+  ipcMain.on('setPlayerVolume', (event, arg) => {
+    if (arg) {
+        settings.set('playerVolume', arg);
     }
   });
 

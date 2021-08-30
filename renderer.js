@@ -34,7 +34,7 @@ function loadSoundtrackFile() {
     title: 'Load Custom Soundtrack',
     properties: ['openFile'],
     filters: [{
-      name: 'Custom Soundtrrack',
+      name: 'Custom Soundtrack',
       extensions: ['soundtrack'],
     }],
   }, fileNames => ipcRenderer.send('setSoundtrack', fileNames));
@@ -42,6 +42,7 @@ function loadSoundtrackFile() {
 
 function handleVolumeChange(volume) {
   App.playerController.setVolume(volume);
+  ipcRenderer.send('setPlayerVolume', volume);
 }
 
 function updateState(event, data){
@@ -58,7 +59,11 @@ function updateState(event, data){
   document.getElementById('update-container').style.display = data.isUpdateAvailable && !App.ignoreUpdate ? 'inline' : 'none';
   document.getElementById('update-buttons').style.display = !data.isUpdateDownloading ? 'inline' : 'none';
   document.getElementById('update-text').innerHTML = !data.isUpdateDownloading ? 'Update Available!' : 'Update Downloading!';
-
+  const oldVolume = document.getElementById('volume-slider').value;
+  document.getElementById('volume-slider').value = data.playerVolume ? data.playerVolume : 25;
+  if(oldVolume != data.playerVolume){
+    handleVolumeChange(data.playerVolume);
+  }
   if(!data.isPoERunning && App.isPlaying){
     App.playerController.fadeout();
   }
