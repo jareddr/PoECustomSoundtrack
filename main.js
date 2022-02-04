@@ -2,7 +2,10 @@ const electron = require('electron');
 const poeCustomSoundtrack = require('./poeCustomSoundtrack.js');
 const { autoUpdater } = require('electron-updater');
 autoUpdater.logger = require('electron-log');
-//autoUpdater.updateConfigPath = 'dev-app-update.yml';
+
+if(process.env.Node_ENV === 'development'){
+  autoUpdater.updateConfigPath = 'dev-app-update.yml';
+}
 
 autoUpdater.logger.transports.file.level = 'info';
 autoUpdater.autoDownload = false;

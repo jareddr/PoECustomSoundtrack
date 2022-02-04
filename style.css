@@ -1,117 +1,122 @@
 body {
-    border: 0px;
-    padding: 0px;
-    font-family: "Exocet Light";
-    font-weight: bold;
-    color: #ddd;
-    font-size: 18px;
-    overflow-x: hidden;
+  border: 0px;
+  padding: 0px;
+  font-family: 'Exocet Light';
+  font-weight: bold;
+  color: #ddd;
+  font-size: 18px;
+  overflow-x: hidden;
 }
 
 .d2button {
-	background-color:#858480;
-	-moz-border-radius:4px;
-	-webkit-border-radius:4px;
-	border-radius:4px;
-	border:2px solid #333029;
-	display:inline-block;
-	cursor:pointer;
-	color:#11120d;
-	font-size:12px;
-	font-weight:bold;
-	padding:2px 3px;
-	margin-top:5px;
-	text-decoration:none;
+  background-color: #858480;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  border: 2px solid #333029;
+  display: inline-block;
+  cursor: pointer;
+  color: #11120d;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 2px 3px;
+  margin-top: 5px;
+  text-decoration: none;
 }
 
-.float-left{
-	float:left;
+.float-left {
+  float: left;
 }
 
 .d2button:hover {
-	background-color:#9e998b;
+  background-color: #9e998b;
 }
 .d2button:active {
-	position:relative;
-	top:1px;
+  position: relative;
+  top: 1px;
 }
 
-#poe-path{
-	font-size: 13px;
-	display: block;
-	padding: 8px;
-	float:left;
-	text-overflow: ellipsis;
-	cursor:pointer;
-	width:80%;
-	white-space: nowrap
+#poe-path {
+  font-size: 13px;
+  display: block;
+  padding: 8px;
+  float: left;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  width: 80%;
+  white-space: nowrap;
 }
-#soundtrack-name{
-	font-size: 13px;
-	display: block;
-	padding: 8px;
-	float:left;
-	text-overflow: ellipsis;
-	cursor:pointer;
-	width:80%;
-	white-space: nowrap
-}
-
-#poe-path:hover{
-	color: #aaa;
+#soundtrack-name {
+  font-size: 13px;
+  display: block;
+  padding: 8px;
+  float: left;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  width: 80%;
+  white-space: nowrap;
 }
 
-#soundtrack-name:hover{
-	color: #aaa;
+#poe-path:hover {
+  color: #aaa;
 }
 
-
-#youtube-parent-container{
-	margin-top:20px;
-	height:220px;
+#soundtrack-name:hover {
+  color: #aaa;
 }
 
-.volume-glyph{
-	vertical-align: middle;
+#youtube-parent-container {
+  margin-top: 20px;
+  height: 220px;
 }
 
-#volume-slider{
-	width:200px;
-	-webkit-appearance: none;
-    height: 8px;
-    border-radius: 5px;   
-    background: #d3d3d3;
-    outline: none;
+.volume-glyph {
+  vertical-align: middle;
+}
+
+#volume-slider {
+  width: 200px;
+  -webkit-appearance: none;
+  height: 8px;
+  border-radius: 5px;
+  background: #d3d3d3;
+  outline: none;
 }
 
 #volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 25px;
-    height: 25px;
-    border-radius: 50%; 
-    background: green;
-    cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: green;
+  cursor: pointer;
 }
 
-#update-container{
-	font-size: 0.7em;
-	padding: .7em;
-	margin: 0px;
-	background-color: rgba(70,150,150,0.9);
-	position: absolute;
-	bottom: 0px;
-	width: 100%;
-	left: 0px;
+#update-container {
+  font-size: 0.7em;
+  padding: 0.7em;
+  margin: 0px;
+  background-color: rgba(70, 150, 150, 0.9);
+  position: absolute;
+  bottom: 0px;
+  width: 100%;
+  left: 0px;
 }
 
-.btn-primary{
-	background-color:#0ba5a5;
+.btn-primary {
+  background-color: #0ba5a5;
 }
 
-.btn-secondary{
-	background-color:#d82f2f;
+.btn-secondary {
+  background-color: #d82f2f;
 }
 
-
-@font-face {font-family:"Exocet Light";src:url("EXL_____.eot?") format("eot"),url("EXL_____.woff") format("woff"),url("EXL_____.ttf") format("truetype"),url("EXL_____.svg#ExocetLight") format("svg");font-weight:normal;font-style:normal;}
+@font-face {
+  font-family: 'Exocet Light';
+  src: url('EXL_____.eot?') format('eot'), url('EXL_____.woff') format('woff'),
+    url('EXL_____.ttf') format('truetype'),
+    url('EXL_____.svg#ExocetLight') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}

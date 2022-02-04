@@ -6,3 +6,5 @@ settings.json
 build
 dist
 electron-builder.yaml
+dev-app-update.yml
+.vscode
