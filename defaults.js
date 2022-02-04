@@ -631,12 +631,10 @@ let soundtrack = {
 		"Bluffs": "random",
 		"Rotting Temple": "random",
 		"Shipwreck Reef": "random",
-		"Cemetery": "random",
 		"Sarn Slums": "random",
 		"Dried Riverbed": "random",
 		"Mountainside": "random",
 		"Forest Ruins": "random",
-		"Vaal Temple": "random",
 		"Utzaal Outskirts": "random",
 		"Desert Ruins": "random",
 		"Scrublands": "random",
@@ -652,7 +650,17 @@ let soundtrack = {
 		"Mushroom Thicket": "random",
 		"Alluring Pool": "random",
 		"Lost Sanctum": "random",
-		"Chittering Chamber": "random"
+		"Chittering Chamber": "random",
+		"Drox, The Warlord": "random",
+		"Al-Hezmin, The Hunter": "random",
+		"Veritania, The Redeemer": "random",
+		"Baran, The Crusader": "random",
+		"Absence of Symmetry and Harmony": "random",
+		"Absence of Patience and Wisdom": "random",
+		"MapWorldsPrimordialBoss2": "random",
+		"Seething Chyme": "random",
+		"Ancestral Hideout": "random",
+		"Black Void Hideout": "random"
 	}
 }  
 
