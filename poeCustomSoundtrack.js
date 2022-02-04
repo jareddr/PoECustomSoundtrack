@@ -104,10 +104,15 @@ function parseLogLine(line) {
 
   // also watch for poe to boot up and play login window music
   const loginWindow = line.match(/LOG FILE OPENING/);
-  if (loginWindow) {
+  
+  // exit to login window
+  const exitWindow = line.match(/] Async connecting to /)
+    || line.match(/] Abnormal disconnect: An unexpected disconnection occurred./);
+  
+    if (loginWindow || exitWindow) {
     newArea = ['login', 'login'];
   }
-
+  
   if (newArea) {
     const areaCode = newArea[1];
     const track = getTrack(areaCode);
