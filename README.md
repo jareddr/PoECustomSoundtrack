@@ -2,7 +2,9 @@
 
 ![](pietyd2.png)
 
-Useage and customization guide here: https://www.youtube.com/watch?v=DyfBy1K1Y1s
+Updated for Archnemesis 3.17!
+
+Usage and customization guide here: https://www.youtube.com/watch?v=DyfBy1K1Y1s
 
 **You pick the soundtrack for every area in game!**
 
