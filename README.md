@@ -2,7 +2,7 @@
 
 ![](pietyd2.png)
 
-Updated for Archnemesis 3.17!
+Updated for Archnemesis 3.17
 
 Usage and customization guide here: https://www.youtube.com/watch?v=DyfBy1K1Y1s
 
