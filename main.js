@@ -1,6 +1,7 @@
 const electron = require('electron');
 const poeCustomSoundtrack = require('./poeCustomSoundtrack.js');
 const { autoUpdater } = require('electron-updater');
+const { version } = require('./package.json');
 autoUpdater.logger = require('electron-log');
 
 if(process.env.Node_ENV === 'development'){
@@ -28,7 +29,7 @@ function createWindow() {
     resizable: false,
     minimizable: false,
     maximizable: false,
-    title: 'PoE Custom Soundtrack',
+    title: `PoE Custom Soundtrack v${version}`,
     icon: './piety.ico',
     webPreferences: {
       nodeIntegration: true,
