@@ -5,6 +5,7 @@ const defaults = require('./defaults.js');
 const fs = require('fs');
 const fileTail = require('file-tail');
 const psList = require('ps-list');
+const { version } = require('./package.json');
 
 const DEFAULT_POE_PATH = 'C:\\Program Files\\Grinding Gear Games\\Path of Exile\\';
 //  load settings from disk
@@ -216,13 +217,10 @@ function checkMusicVolume() {
 }
 
 function setDefaults() {
-  //  make sure world areas and default soundtrack are on disk
-  if (!doesFileExist('WorldAreas.json')) {
-    writeFile('WorldAreas.json', JSON.stringify(defaults.worldAreas, null, '\t'));
-  }
+  //  make sure default soundtrack is on disk
 
-  if (!doesFileExist('diablo2.soundtrack')) {
-    writeFile('diablo2.soundtrack', JSON.stringify(defaults.soundtrack, null, '\t'));
+  if (!doesFileExist(`diablo2-v${version}.soundtrack`)) {
+    writeFile(`diablo2-v${version}.soundtrack`, JSON.stringify(defaults.soundtrack, null, '\t'));
   }
 
   // define poePath in settings if not set
@@ -232,7 +230,7 @@ function setDefaults() {
 
   // define selected soundtrack if not set
   if (!settings.get('soundtrack')) {
-    settings.set('soundtrack', 'diablo2.soundtrack');
+    settings.set('soundtrack', `diablo2-v${version}.soundtrack`);
   }
 
     // define player volume if not set
