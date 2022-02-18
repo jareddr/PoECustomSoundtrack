@@ -25,7 +25,9 @@ function loadLogFile() {
   dialog.showOpenDialog({
     title: 'Locate PoE Directory',
     properties: ['openDirectory'],
-  }, fileNames => ipcRenderer.send('setPoePath', fileNames));
+  }).then ( results =>{
+    ipcRenderer.send('setPoePath', results.filePaths)
+  });
 }
 
 // handle soundtrack file selection
@@ -38,7 +40,9 @@ function loadSoundtrackFile() {
       name: 'Custom Soundtrack',
       extensions: ['soundtrack'],
     }],
-  }, fileNames => ipcRenderer.send('setSoundtrack', fileNames));
+  }).then( results => {
+    ipcRenderer.send('setSoundtrack', results.filePaths);
+  })
 }
 
 function handleVolumeChange(volume) {
