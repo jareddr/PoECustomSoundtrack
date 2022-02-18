@@ -3,7 +3,7 @@
 // All of the Node.js APIs are available in this process.
 
 const { ipcRenderer } = require('electron');
-const { dialog } = require('electron').remote;
+const { dialog, app } = require('electron').remote;
 const {
     PlayerController,
     YoutubePlayer,
@@ -32,6 +32,7 @@ function loadLogFile() {
 function loadSoundtrackFile() {
   dialog.showOpenDialog({
     title: 'Load Custom Soundtrack',
+    defaultPath: app.getAppPath(), // Default Path 
     properties: ['openFile'],
     filters: [{
       name: 'Custom Soundtrack',
