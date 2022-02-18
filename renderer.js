@@ -65,6 +65,7 @@ function updateState(event, data){
     handleVolumeChange(data.playerVolume);
   }
   if(!data.isPoERunning && App.isPlaying){
+    App.isPlaying = false;
     App.playerController.fadeout();
   }
   

@@ -17,15 +17,23 @@ let isUpdateAvailable = false;
 let isUpdateDownloading = false;
 let autoUpdater = false;
 let isPoERunning = false;
-let playerVolume = 25;
 
-// const worldAreas = defaults.worldAreas;
 let soundtrack = defaults.soundtrack;
+
+function reset(){
+  currentTrackName = false;
+}
 
 function updateRunningStatus(){
   psList().then(function(ps){
+    let wasPoERunning = isPoERunning;
+
     const running = ps.filter(proc => proc.name.match(/pathofexile/i));
     isPoERunning = running.length > 0;
+
+    if(wasPoERunning === true && isPoERunning === false){
+      reset();
+    }
   })
 }
 
@@ -99,6 +107,10 @@ function getTrack(areaName) {
 
 
 function parseLogLine(line) {
+
+  //assume POE is running if a new log line come sin
+  isPoERunning = true;
+
   // watch log file for area changes
   let newArea = line.match(/You have entered ([^.]*)./);
 

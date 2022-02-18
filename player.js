@@ -7,19 +7,19 @@ class PlayerController {
   }
 
   pause() {
-    if (this.active_player) {
+    if (this.active_player.player) {
       this.active_player.pause();
     }
   }
 
   fadeout() {
-    if (this.active_player) {
+    if (this.active_player.player) {
       this.active_player.fadeout();
     }
   }
 
   setTrack(track, startingPosition) {
-    if (this.active_player) {
+    if (this.active_player.player) {
       this.active_player.fadeout();
       delete this.active_player;
     }
@@ -44,7 +44,7 @@ class PlayerController {
 
   setVolume(volume) {
     this.volume = volume;
-    if (this.active_player) this.active_player.setVolume(volume);
+    if (this.active_player.player) this.active_player.setVolume(volume);
   }
 
 }
@@ -154,24 +154,26 @@ class YoutubePlayer {
     this.player.setVolume(level);
   }
   getVolume() {
-    return this.player.getVolume();
+    return this.player.getVolume ? this.player.getVolume() : undefined;
   }
 
   async fadeout() {
     // hide current player
-    this.player.setSize(0, 0);
-    const sleep = ms => new Promise(res => setTimeout(res, ms));
-    while (this.getVolume() > 1) {
-      this.setVolume(this.getVolume() * 0.8);
-      /* eslint-disable */
-      await sleep(300);
-      /* eslint-enable */
+    if(this.player.setSize){
+      this.player.setSize(0, 0);
+      const sleep = ms => new Promise(res => setTimeout(res, ms));
+      while (this.getVolume() > 1) {
+        this.setVolume(this.getVolume() * 0.8);
+        /* eslint-disable */
+        await sleep(300);
+        /* eslint-enable */
+      }
     }
     this.destroy();
   }
 
   destroy() {
-    if (this.player) {
+    if (this.player.destroy) {
       this.player.destroy();
     }
     if (this.element) {
