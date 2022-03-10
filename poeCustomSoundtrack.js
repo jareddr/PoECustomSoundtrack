@@ -13,6 +13,7 @@ const settings = require('electron-settings');
 
 let mainWindow;
 let currentTrackName = false;
+let currentTrackId = false;
 let ft;
 let isUpdateAvailable = false;
 let isUpdateDownloading = false;
@@ -23,6 +24,7 @@ let soundtrack = defaults.soundtrack;
 
 function reset(){
   currentTrackName = false;
+  currentTrackId = false;
 }
 
 function updateRunningStatus(){
@@ -87,7 +89,23 @@ function generateTrack(track) {
 }
 
 function randomElement(arr) {
-  return arr ? arr[Math.floor(Math.random() * arr.length)] : false;
+  
+  // Array with more than 1 unique track ID always change track.
+
+  // Find tracks other than current track.
+  const otherTrackArr = arr.filter(t => getTrackId(t.location) !== currentTrackId);
+  
+  if (otherTrackArr.length === 0) {
+    // No other tracks.
+    // Reuse current track.
+    return arr ? arr[0] : false;
+  } else {
+    // Has other tracks.
+    // Exclude current track and pick a random track.
+    return otherTrackArr ? otherTrackArr[Math.floor(Math.random() * otherTrackArr.length)] : false;
+  }
+  
+  //return arr ? arr[Math.floor(Math.random() * arr.length)] : false;
 }
 
 function getTrack(areaName) {
@@ -122,7 +140,7 @@ function parseLogLine(line) {
   const exitWindow = line.match(/] Async connecting to /)
     || line.match(/] Abnormal disconnect: An unexpected disconnection occurred./);
   
-    if (loginWindow || exitWindow) {
+  if (loginWindow || exitWindow) {
     newArea = ['login', 'login'];
   }
   
@@ -130,8 +148,10 @@ function parseLogLine(line) {
     const areaCode = newArea[1];
     const track = getTrack(areaCode);
     if (track) {
-      if (currentTrackName !== track.name) {
+      if (areaCode === 'login' && currentTrackName !== track.name // Login screen uses existing logic
+          || areaCode !== 'login' && currentTrackId !== track.id) { // Zone transition checks track ID instead of track names
         currentTrackName = track.name;
+        currentTrackId = track.id;
         mainWindow.webContents.send('changeTrack', track);
       }
     }
