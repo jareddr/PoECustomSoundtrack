@@ -83,6 +83,7 @@ function generateTrack(track) {
     type,
     id,
     name: track.name,
+    endSeconds: track.endSeconds // Optional ending time in seconds to loop earlier.
   };
 }
 
