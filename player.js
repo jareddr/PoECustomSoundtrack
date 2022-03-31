@@ -59,6 +59,7 @@ class YoutubePlayer {
     this.controller = parentController;
     this.track = track;
     this.startTime = startTime;
+    this.endTime = track.endSeconds;
     this.pollTimer = false;
     this.id = false;
     this.trackError = false;
@@ -72,7 +73,7 @@ class YoutubePlayer {
   onPlayerReady() {
     this.ready = true;
     if (this.track) {
-      this.setTrack(this.track.id, this.startTime);
+      this.setTrack(this.track.id, this.startTime, this.endTime);
     }
   }
 
@@ -139,13 +140,24 @@ class YoutubePlayer {
   pause() {
     this.player.pauseVideo();
   }
-  setTrack(id, startingTime) {
+  setTrack(id, startingTime, endingTime) {
     // hack to make html5 player work
     setTimeout(() => {
-      this.player.loadVideoById({
-        videoId: id,
-        startSeconds: startingTime,
-      });
+      if (endingTime > 0) {
+        // endingTime > 0 will be added to endSeconds loadVideoById.
+        this.player.loadVideoById({
+          videoId: id,
+          startSeconds: startingTime,
+          endSeconds: endingTime
+        });
+      } else {
+        // Otherwise will behave as normal.
+        this.player.loadVideoById({
+          videoId: id,
+          startSeconds: startingTime
+        });
+      }
+
       this.player.setVolume(this.controller.volume);
       this.play();
     }, 10);
