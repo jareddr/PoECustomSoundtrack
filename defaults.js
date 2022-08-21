@@ -256,6 +256,11 @@ let soundtrack = {
 		"Fractured Laboratory": "random",
 		"Distant Memory": "random",
 		"Shattered Memory": "random",
+        "Altered Distant Memory": "random",
+        "Augmented Distant Memory": "random",
+        "Rewritten Distant Memory": "random",
+        "Twisted Distant Memory": "random",
+        "Cortex": "random",
 		"Tane's Laboratory": "random",
 		"Aspirants' Plaza": "random",
 		"Sepulchre Annex": "random",
@@ -661,6 +666,10 @@ let soundtrack = {
 		"Seething Chyme": "random",
 		"Ancestral Hideout": "random",
 		"Black Void Hideout": "random",
+        "Timekeeper's Hideout": "hideout",
+        "Ghost-lit Graveyard Hideout": "hideout",
+        "Polaric Hideout": "hideout",
+        "Seething Hideout": "hideout",
 		"Tavern Hideout": "random"
 	}
 }  
