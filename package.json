@@ -4,7 +4,25 @@
   "description": "A small app to replace path of exile music with that of diablo",
   "main": "main.js",
   "scripts": {
-    "start": "cross-env NODE_ENV=development electron main.js"
+    "start": "cross-env NODE_ENV=development electron main.js",
+    "release": "electron-builder -p onTagOrDraft",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "PoECustomSoundtrack",
+    "asar": "true",
+    "win": {
+      "publish": "github",
+      "icon": "pietyd2.ico",
+      "target": [
+        "zip",
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": "true",
+      "perMachine": "true"
+    }
   },
   "eslintConfig": {
     "env": {
