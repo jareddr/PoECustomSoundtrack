@@ -40,7 +40,7 @@ As you can tell from the video guide where I was playing an RF totem chieftan, t
 
 # Dev Environment.
 
-Use Node Version Manager (nvm) or N to drop bay to node version 10.24.1.
+Use Node Version Manager (nvm) or N to drop down to node version `10.24.1`.
 
 `npm install` will download all the requirements
 `npm run` should launch the app.
