@@ -671,6 +671,21 @@ let soundtrack = {
         "Polaric Hideout": "random",
         "Seething Hideout": "random",
         "The Lake of Kalandra": "random",
+		"Sanctum Vaults": "random",
+		"Sanctum Cathedral": "random",
+		"Sanctum Necropolis": "random",
+		"Beyond": "random",
+		"The Forbidden Sanctum": "random",
+		"Sanctum Archives": "random",
+		"Sanctum Mausoleum": "random",
+		"Your Hideout": "random",
+		"Atlas Hideout": "random",
+		"Searing Hideout": "random",
+		"Tangled Hideout": "random",
+		"Your Guild Hideout": "random",
+		"Forge of the Titans": "random",
+		"Voidborn Reliquary": "random",
+		"Infinite Abyss Hideout": "random",
 		"Tavern Hideout": "random"
 	}
 }  
