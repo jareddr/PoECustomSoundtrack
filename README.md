@@ -38,14 +38,14 @@ If anyone wants to contribute by adding features, making improvements or fixing 
 
 As you can tell from the video guide where I was playing an RF totem chieftan, this is pretty old. I have not kept up with new versions of any of the libraries. To run this on your local machine I believe you need to use node version 10.24.1.
 
-# Dev Environment.
+## Dev Environment.
 
 Use Node Version Manager (nvm) or N to drop down to node version `10.24.1`.
 
 `npm install` will download all the requirements
 `npm run` should launch the app.
 
-# Deploying (note to self)
+## Deploying (note to self)
 
 - Update package.json and increment the version.
 - Create a draft release on your github repo with the tag vX.Y.Z where X.Y.Z is version from package.json, save the draft.
