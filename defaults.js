@@ -685,6 +685,10 @@ let soundtrack = {
 		"Your Guild Hideout": "random",
 		"Forge of the Titans": "random",
 		"Voidborn Reliquary": "random",
+        "ExileCon 2023 Hideout": "random",
+        "Forge of the Titans Hideout": "random",
+        "Ancestral Trial Hideout": "random",
+        "The Halls of the Dead": "random",
 		"Infinite Abyss Hideout": "random",
 		"Tavern Hideout": "random"
 	}
