@@ -689,6 +689,8 @@ let soundtrack = {
         "Forge of the Titans Hideout": "random",
         "Ancestral Trial Hideout": "random",
         "The Halls of the Dead": "random",
+		"The Viridian Wildwood": "random",
+		"Crux of Nothingness": "random",
 		"Infinite Abyss Hideout": "random",
 		"Tavern Hideout": "random"
 	}
