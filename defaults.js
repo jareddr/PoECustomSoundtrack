@@ -691,9 +691,9 @@ let soundtrack = {
         "The Halls of the Dead": "random",
 		"The Viridian Wildwood": "random",
 		"Crux of Nothingness": "random",
+        "Enigma Hideout": "random",
 		"Infinite Abyss Hideout": "random",
-		"Tavern Hideout": "random",
-        "Enigma Hideout": "random"
+		"Tavern Hideout": "random"
 	}
 }  
 
