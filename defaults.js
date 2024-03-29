@@ -691,7 +691,14 @@ let soundtrack = {
         "The Halls of the Dead": "random",
 		"The Viridian Wildwood": "random",
 		"Crux of Nothingness": "random",
-        "Enigma Hideout": "random",
+		"Sanctuary": "random",
+		"Citadel": "random",
+		"Fortress": "random",
+		"Abomination": "random",
+		"Ziggurat": "random",
+		"The Necropolis": "random",
+		"Cosmic Turtle Hideout": "random",
+		"Enigma Hideout": "random",
 		"Infinite Abyss Hideout": "random",
 		"Tavern Hideout": "random"
 	}
