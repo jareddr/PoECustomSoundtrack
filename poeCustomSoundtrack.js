@@ -238,6 +238,22 @@ function checkMusicVolume() {
   return false;
 }
 
+function checkCharEvent() {
+  const home = process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
+  const configFile = `${home}\\Documents\\My Games\\Path of Exile\\production_Config.ini`;
+  try {
+    const handle = fs.openSync(configFile, 'r+');
+    const data = fs.readFileSync(configFile, 'utf-8');
+    fs.closeSync(handle);
+    if (data.match(/disable_char_events=(\w+)/ig)) {
+      return data.match(/disable_char_events=(\w+)/)[1];
+    }
+  } catch (err) {
+    return false;
+  }
+  return false;
+}
+
 function setDefaults() {
   //  make sure default soundtrack is on disk
 
@@ -277,6 +293,7 @@ function getState() {
     path: settings.get('poePath'),
     valid: doesLogExist(),
     volume: checkMusicVolume(),
+    charEvent: checkCharEvent(),
     soundtrack: settings.get('soundtrack'),
     playerVolume: settings.get('playerVolume'),
     isUpdateAvailable,
