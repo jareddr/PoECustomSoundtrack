@@ -61,6 +61,8 @@ function updateState(event, data){
   document.getElementById('poe-path-invalid').style.display = data.valid ? 'none' : 'inline';
   document.getElementById('volume-valid').style.display = data.volume === 0 ? 'inline' : 'none';
   document.getElementById('volume-invalid').style.display = data.volume === 0 ? 'none' : 'inline';
+  document.getElementById('char-event-valid').style.display = data.charEvent === 'false' ? 'inline' : 'none';
+  document.getElementById('char-event-invalid').style.display = data.charEvent === 'false' ? 'none' : 'inline';
   document.getElementById('update-container').style.display = data.isUpdateAvailable && !App.ignoreUpdate ? 'inline' : 'none';
   document.getElementById('update-buttons').style.display = !data.isUpdateDownloading ? 'inline' : 'none';
   document.getElementById('update-text').innerHTML = !data.isUpdateDownloading ? 'Update Available!' : 'Update Downloading!';
