@@ -701,6 +701,7 @@ let soundtrack = {
 		"Starfall Crater": "random",
 		"Sailor's Folly": "random",
 		"Abandoned Port": "random",
+		"Vastiri Racecourse Hideout": "random",
 		"Cosmic Turtle Hideout": "random",
 		"Enigma Hideout": "random",
 		"Infinite Abyss Hideout": "random",
