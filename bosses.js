@@ -53,7 +53,7 @@ let dialog = {
     "Sin: Daughter!": "Sin",
     "Sin: My love...": "Sin",
     "Sin: I shall strike you down!": "Kitava, the Insatiable",
-    "Sin: May a new dawn arise!": "Credits"
+    "Sin: May a new dawn arise!": "Credit"
 }
 
 module.exports = {
