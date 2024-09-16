@@ -36,7 +36,7 @@ let dialog = {
     "Malachai: You could not be more perfect, Scion. So now it is up to us to commit one final act of creation. A single death that will mark the rebirth of an entire world!": "Malachai, The Nightmare",
     "Avarius: The world must be cleansed of impurity.": "High Templar Avarius",
     "Sin: Innocence!": "Sin",
-    "Sin: The flame of hope may flicker but it cannot be extinguished!": "Defeat",
+    "Sin: The flame of hope may flicker but it cannot be extinguished!": "Cruel",
     "Tukohama: Let me teach you the laws of war.": "Minor God",
     "Sin: Tukohama!": "Sin",
     "Sin: Abberath!": "Sin",
@@ -53,7 +53,7 @@ let dialog = {
     "Sin: Daughter!": "Sin",
     "Sin: My love...": "Sin",
     "Sin: I shall strike you down!": "Kitava, the Insatiable",
-    "Sin: May a new dawn arise!": "Credit"
+    "Sin: May a new dawn arise!": "Merciless"
 }
 
 module.exports = {
