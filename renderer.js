@@ -3,7 +3,6 @@
 // All of the Node.js APIs are available in this process.
 
 const { ipcRenderer } = require('electron');
-const { dialog, app } = require('electron').remote;
 const {
     PlayerController,
     YoutubePlayer,
@@ -21,28 +20,19 @@ App.isPlaying = false;
 
 
 // handle file select dialog
-function loadLogFile() {
-  dialog.showOpenDialog({
-    title: 'Locate PoE Directory',
-    properties: ['openDirectory'],
-  }).then ( results =>{
-    ipcRenderer.send('setPoePath', results.filePaths)
-  });
+async function loadLogFile() {
+  const results = await ipcRenderer.invoke('open-directory-dialog');
+  if (results && !results.canceled && results.filePaths) {
+    ipcRenderer.send('setPoePath', results.filePaths);
+  }
 }
 
 // handle soundtrack file selection
-function loadSoundtrackFile() {
-  dialog.showOpenDialog({
-    title: 'Load Custom Soundtrack',
-    defaultPath: app.getAppPath(), // Default Path 
-    properties: ['openFile'],
-    filters: [{
-      name: 'Custom Soundtrack',
-      extensions: ['soundtrack'],
-    }],
-  }).then( results => {
+async function loadSoundtrackFile() {
+  const results = await ipcRenderer.invoke('open-file-dialog');
+  if (results && !results.canceled && results.filePaths) {
     ipcRenderer.send('setSoundtrack', results.filePaths);
-  })
+  }
 }
 
 function handleVolumeChange(volume) {

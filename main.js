@@ -6,9 +6,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const { dialog } = require('electron');
 autoUpdater.logger = require('electron-log');
 
-if(process.env.Node_ENV === 'development'){
+if(process.env.NODE_ENV === 'development'){
   autoUpdater.updateConfigPath = 'dev-app-update.yml';
 }
 
@@ -148,7 +149,7 @@ function createWindow() {
   mainWindow.loadURL(`http://127.0.0.1:${serverPort}/`);
 
   // Open the DevTools.
-  if(process.env.Node_ENV === 'development'){
+  if(process.env.NODE_ENV === 'development'){
    mainWindow.webContents.openDevTools();
   }
 
@@ -171,6 +172,35 @@ app.on('ready', async () => {
     await startLocalServer();
     createWindow();
     autoUpdater.checkForUpdates();
+    
+    // IPC handlers for dialog operations (replacing electron.remote)
+    electron.ipcMain.handle('open-directory-dialog', async () => {
+      const window = mainWindow || BrowserWindow.getAllWindows()[0];
+      const result = await dialog.showOpenDialog(window, {
+        title: 'Locate PoE Directory',
+        properties: ['openDirectory'],
+      });
+      return result;
+    });
+
+    electron.ipcMain.handle('open-file-dialog', async (event, options) => {
+      const window = mainWindow || BrowserWindow.getAllWindows()[0];
+      const result = await dialog.showOpenDialog(window, {
+        title: 'Load Custom Soundtrack',
+        defaultPath: app.getAppPath(),
+        properties: ['openFile'],
+        filters: [{
+          name: 'Custom Soundtrack',
+          extensions: ['soundtrack'],
+        }],
+        ...options,
+      });
+      return result;
+    });
+
+    electron.ipcMain.handle('get-app-path', () => {
+      return app.getAppPath();
+    });
   } catch (error) {
     console.error('Failed to start local server:', error);
     app.quit();

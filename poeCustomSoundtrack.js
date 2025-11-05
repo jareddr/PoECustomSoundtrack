@@ -40,6 +40,10 @@ function updateRunningStatus(){
     if(wasPoERunning === true && isPoERunning === false){
       reset();
     }
+  }).catch(function(err){
+    // Silently handle errors from process list check (e.g., tasklist command cancelled)
+    // This prevents unhandled promise rejection warnings
+    console.log('Process list check failed:', err.message);
   })
 }
 
