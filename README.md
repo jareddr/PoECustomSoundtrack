@@ -2,7 +2,7 @@
 
 ![](pietyd2.png)
 
-Updated for Crucible 3.21
+Updated for Keepers of the Flame 3.27
 
 Usage and customization guide here: https://www.youtube.com/watch?v=DyfBy1K1Y1s
 
