@@ -13,6 +13,7 @@ const settings = require('electron-settings');
 
 let mainWindow;
 let currentTrackName = false;
+let currentTrackId = false;
 let ft;
 let isUpdateAvailable = false;
 let isUpdateDownloading = false;
@@ -21,8 +22,12 @@ let isPoERunning = false;
 
 let soundtrack = defaults.soundtrack;
 
+// File containing boss dialogs.
+const bosses = require('./bosses.js');
+
 function reset(){
   currentTrackName = false;
+  currentTrackId = false;
 }
 
 function updateRunningStatus(){
@@ -88,7 +93,23 @@ function generateTrack(track) {
 }
 
 function randomElement(arr) {
-  return arr ? arr[Math.floor(Math.random() * arr.length)] : false;
+  
+  // Array with more than 1 unique track ID always change track.
+
+  // Find tracks other than current track.
+  const otherTrackArr = arr.filter(t => getTrackId(t.location) !== currentTrackId);
+  
+  if (otherTrackArr.length === 0) {
+    // No other tracks.
+    // Reuse current track.
+    return arr ? arr[0] : false;
+  } else {
+    // Has other tracks.
+    // Exclude current track and pick a random track.
+    return otherTrackArr ? otherTrackArr[Math.floor(Math.random() * otherTrackArr.length)] : false;
+  }
+  
+  //return arr ? arr[Math.floor(Math.random() * arr.length)] : false;
 }
 
 function getTrack(areaName) {
@@ -123,19 +144,39 @@ function parseLogLine(line) {
   const exitWindow = line.match(/] Async connecting to /)
     || line.match(/] Abnormal disconnect: An unexpected disconnection occurred./);
   
-    if (loginWindow || exitWindow) {
+  if (loginWindow || exitWindow) {
     newArea = ['login', 'login'];
+  }
+
+  // Gets the boss name if the logs contains boss dialog.
+  const boss = getBoss(line);
+  if (boss) {
+    // Boss music will be handled by the soundtrack json similar to new areas.
+    newArea = [boss, boss];
   }
   
   if (newArea) {
     const areaCode = newArea[1];
     const track = getTrack(areaCode);
     if (track) {
-      if (currentTrackName !== track.name) {
+      if (areaCode === 'login' && currentTrackName !== track.name // Login screen uses existing logic
+          || areaCode !== 'login' && currentTrackId !== track.id) { // Zone transition checks track ID instead of track names
         currentTrackName = track.name;
+        currentTrackId = track.id;
         mainWindow.webContents.send('changeTrack', track);
       }
     }
+  }
+}
+
+// Checks whether a line in the logs contains boss dialog.
+function getBoss(line) {
+  try {
+    // If contains boss dialog, returns the boss name.
+    return bosses.dialog[line.substring(line.lastIndexOf('] ') + 2)];
+  } catch (err) {
+    // Otherwise returns null.
+    return null;
   }
 }
 
@@ -217,6 +258,22 @@ function checkMusicVolume() {
   return false;
 }
 
+function checkCharEvent() {
+  const home = process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
+  const configFile = `${home}\\Documents\\My Games\\Path of Exile\\production_Config.ini`;
+  try {
+    const handle = fs.openSync(configFile, 'r+');
+    const data = fs.readFileSync(configFile, 'utf-8');
+    fs.closeSync(handle);
+    if (data.match(/disable_char_events=(\w+)/ig)) {
+      return data.match(/disable_char_events=(\w+)/)[1];
+    }
+  } catch (err) {
+    return false;
+  }
+  return false;
+}
+
 function setDefaults() {
   //  make sure default soundtrack is on disk
 
@@ -256,6 +313,7 @@ function getState() {
     path: settings.get('poePath'),
     valid: doesLogExist(),
     volume: checkMusicVolume(),
+    charEvent: checkCharEvent(),
     soundtrack: settings.get('soundtrack'),
     playerVolume: settings.get('playerVolume'),
     isUpdateAvailable,
