@@ -3,17 +3,19 @@
 // All of the Node.js APIs are available in this process.
 
 const { ipcRenderer } = require('electron');
-const {
-    PlayerController,
-    YoutubePlayer,
-    LocalPlayer,
-} = require('./player.js');
+// Player classes are loaded via script tag and exposed on window
 
 const App = {};
 
-App.playerController = new PlayerController();
-App.playerController.register(YoutubePlayer, 'youtube');
-App.playerController.register(LocalPlayer, 'local');
+// Initialize player controller only if classes are available
+// Use window directly to avoid any redeclaration issues
+if (window.PlayerController && window.YoutubePlayer && window.LocalPlayer) {
+  App.playerController = new window.PlayerController();
+  App.playerController.register(window.YoutubePlayer, 'youtube');
+  App.playerController.register(window.LocalPlayer, 'local');
+} else {
+  console.error('Player classes not loaded. Make sure player.js loads before renderer.js');
+}
 App.updateAvailable = false;
 App.ignoreUpdate = false;
 App.isPlaying = false;
@@ -36,7 +38,9 @@ async function loadSoundtrackFile() {
 }
 
 function handleVolumeChange(volume) {
-  App.playerController.setVolume(volume);
+  if (App.playerController) {
+    App.playerController.setVolume(volume);
+  }
   ipcRenderer.send('setPlayerVolume', volume);
 }
 
@@ -63,7 +67,9 @@ function updateState(event, data){
   }
   if(!data.isPoERunning && App.isPlaying){
     App.isPlaying = false;
-    App.playerController.fadeout();
+    if (App.playerController) {
+      App.playerController.fadeout();
+    }
   }
   
 }
@@ -77,10 +83,20 @@ function ignoreUpdate(){
   ipcRenderer.send('updateState');
 }
 
+// Expose functions globally for HTML onclick handlers
+// Do this immediately after function definitions to ensure they're available
+window.loadLogFile = loadLogFile;
+window.handleVolumeChange = handleVolumeChange;
+window.loadSoundtrackFile = loadSoundtrackFile;
+window.installUpdate = installUpdate;
+window.ignoreUpdate = ignoreUpdate;
+
 // backend will tell us to play a new track based on zone changes
 ipcRenderer.on('changeTrack', (event, data) => {
-  App.playerController.playTrack(data, 0);
-  App.isPlaying = true;
+  if (App.playerController) {
+    App.playerController.playTrack(data, 0);
+    App.isPlaying = true;
+  }
 });
 
 // backend will send us state values, use it to stupidly update frontend

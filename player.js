@@ -265,3 +265,8 @@ module.exports = {
   YoutubePlayer,
   LocalPlayer,
 };
+
+// Expose classes globally for script tag loading
+window.PlayerController = PlayerController;
+window.YoutubePlayer = YoutubePlayer;
+window.LocalPlayer = LocalPlayer;
