@@ -141,6 +141,13 @@ function parseLogLine(line) {
   // watch log file for area changes
   let newArea = line.match(/You have entered ([^.]*)./);
 
+  // POE2 support
+  if (settings.get('poePath').includes('Path of Exile 2'))
+  {
+    let newLevel = line.match(/Generating level \d+ area "(.*?)" with seed \d+/);
+    newArea = newLevel;
+  }
+
   // also watch for poe to boot up and play login window music
   const loginWindow = line.match(/LOG FILE OPENING/);
   
