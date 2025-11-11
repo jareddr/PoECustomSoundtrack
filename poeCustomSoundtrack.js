@@ -266,9 +266,43 @@ function doesLogExist() {
 }
 
 
+// Helper function to find the Path of Exile config file
+// Handles cases where Documents folder might be in OneDrive
+function findPoEConfigFile() {
+  if (process.platform !== 'win32') {
+    // Non-Windows: use HOME
+    const home = process.env.HOME;
+    return `${home}/Documents/My Games/Path of Exile/production_Config.ini`;
+  }
+
+  const userProfile = process.env.USERPROFILE;
+  const possiblePaths = [
+    // Standard Documents location
+    `${userProfile}\\Documents\\My Games\\Path of Exile\\production_Config.ini`,
+    // OneDrive Documents location
+    `${userProfile}\\OneDrive\\Documents\\My Games\\Path of Exile\\production_Config.ini`,
+    // Check OneDrive environment variable if set
+    process.env.ONEDRIVE ? `${process.env.ONEDRIVE}\\Documents\\My Games\\Path of Exile\\production_Config.ini` : null,
+  ].filter(path => path !== null);
+
+  // Try each path and return the first one that exists
+  for (const configPath of possiblePaths) {
+    try {
+      if (doesFileExist(configPath)) {
+        return configPath;
+      }
+    } catch (err) {
+      // Continue to next path
+      continue;
+    }
+  }
+
+  // If none found, return the standard path (caller will handle the error)
+  return possiblePaths[0];
+}
+
 function checkMusicVolume() {
-  const home = process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
-  const configFile = `${home}\\Documents\\My Games\\Path of Exile\\production_Config.ini`;
+  const configFile = findPoEConfigFile();
   try {
     const handle = fs.openSync(configFile, 'r+');
     const data = fs.readFileSync(configFile, 'utf-8');
@@ -283,18 +317,15 @@ function checkMusicVolume() {
 }
 
 function checkCharEvent() {
-  const home = process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
-  const configFile = `${home}\\Documents\\My Games\\Path of Exile\\production_Config.ini`;
+  const configFile = findPoEConfigFile();
   try {
     const handle = fs.openSync(configFile, 'r+');
     const data = fs.readFileSync(configFile, 'utf-8');
     fs.closeSync(handle);
-    console.log('data', data.match(/disable_char_events=(\w+)/));
     if (data.match(/disable_char_events=(\w+)/ig)) {
-      return data.match(/disable_char_events=(\w+)/)[1] === 'false';
+      return data.match(/disable_char_events=(\w+)/)[1] === 'true';
     }
   } catch (err) {
-    console.log('err', err);
     return false;
   }
   return false;
