@@ -167,7 +167,20 @@ function parseLogLine(line) {
           || areaCode !== 'login' && currentTrackId !== track.id) { // Zone transition checks track ID instead of track names
         currentTrackName = track.name;
         currentTrackId = track.id;
-        mainWindow.webContents.send('changeTrack', track);
+        // Ensure track object is serializable for IPC
+        const serializableTrack = {
+          type: String(track.type || ''),
+          id: String(track.id || ''),
+          name: String(track.name || ''),
+          endSeconds: track.endSeconds ? Number(track.endSeconds) : undefined
+        };
+        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+          try {
+            mainWindow.webContents.send('changeTrack', serializableTrack);
+          } catch (err) {
+            console.error('Error sending changeTrack:', err);
+          }
+        }
       }
     }
   }
@@ -190,7 +203,7 @@ function startWatchingLog() {
     ft.stop();
   }
 
-  ft = fileTail.startTailing(getLogFile(settings.get('poePath')));
+  ft = fileTail.startTailing(getLogFile(settings.getSync('poePath')));
   ft.on('line', parseLogLine);
 }
 
@@ -235,13 +248,20 @@ function readJsonFile(file) {
     data = data.replace(/\\+/g, '/');
     return JSON.parse(data);
   } catch (err) {
-    mainWindow.webContents.send('errorMessage', `Error loading: ${file} \n ${err.message}`);
+    const errorMsg = String(err.message || 'Unknown error');
+    if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      try {
+        mainWindow.webContents.send('errorMessage', `Error loading: ${file} \n ${errorMsg}`);
+      } catch (sendErr) {
+        console.error('Error sending errorMessage:', sendErr);
+      }
+    }
     return false;
   }
 }
 
 function doesLogExist() {
-  const file = getLogFile(settings.get('poePath'));
+  const file = getLogFile(settings.getSync('poePath'));
   return doesFileExist(file);
 }
 
@@ -269,10 +289,12 @@ function checkCharEvent() {
     const handle = fs.openSync(configFile, 'r+');
     const data = fs.readFileSync(configFile, 'utf-8');
     fs.closeSync(handle);
+    console.log('data', data.match(/disable_char_events=(\w+)/));
     if (data.match(/disable_char_events=(\w+)/ig)) {
-      return data.match(/disable_char_events=(\w+)/)[1];
+      return data.match(/disable_char_events=(\w+)/)[1] === 'false';
     }
   } catch (err) {
+    console.log('err', err);
     return false;
   }
   return false;
@@ -286,18 +308,18 @@ function setDefaults() {
   }
 
   // define poePath in settings if not set
-  if (!settings.get('poePath')) {
-    settings.set('poePath', DEFAULT_POE_PATH);
+  if (!settings.getSync('poePath')) {
+    settings.setSync('poePath', DEFAULT_POE_PATH);
   }
 
   // define selected soundtrack if not set
-  if (!settings.get('soundtrack')) {
-    settings.set('soundtrack', `diablo2-v${version}.soundtrack`);
+  if (!settings.getSync('soundtrack')) {
+    settings.setSync('soundtrack', `diablo2-v${version}.soundtrack`);
   }
 
     // define player volume if not set
-    if (!settings.get('playerVolume')) {
-      settings.set('playerVolume', '25');
+    if (!settings.getSync('playerVolume')) {
+      settings.setSync('playerVolume', '25');
     }
 }
 
@@ -313,17 +335,51 @@ function loadSoundtrack(file) {
 
 
 function getState() {
-  return {
-    path: settings.get('poePath'),
-    valid: doesLogExist(),
-    volume: checkMusicVolume(),
-    charEvent: checkCharEvent(),
-    soundtrack: settings.get('soundtrack'),
-    playerVolume: settings.get('playerVolume'),
-    isUpdateAvailable,
-    isUpdateDownloading,
-    isPoERunning
-  };
+  // Ensure all values are serializable primitives for IPC
+  // Electron 31 has strict IPC serialization requirements
+  try {
+    // Get settings values using getSync() for synchronous access (electron-settings v4)
+    const poePath = settings.getSync('poePath') || '';
+    const soundtrack = settings.getSync('soundtrack') || '';
+    const playerVolume = settings.getSync('playerVolume') || '25';
+    
+    const volume = checkMusicVolume();
+    const charEvent = checkCharEvent();
+    const logExists = doesLogExist();
+    
+    // Create a plain object with only serializable primitives
+    const state = {
+      path: String(poePath),
+      valid: Boolean(logExists),
+      volume: (volume !== false && !isNaN(Number(volume))) ? Number(volume) : 0,
+      charEvent: charEvent,
+      soundtrack: String(soundtrack),
+      playerVolume: String(playerVolume),
+      isUpdateAvailable: Boolean(isUpdateAvailable),
+      isUpdateDownloading: Boolean(isUpdateDownloading),
+      isPoERunning: Boolean(isPoERunning)
+    };
+    
+    // Verify serializability by attempting to stringify
+    JSON.stringify(state);
+
+      
+    return state;
+  } catch (err) {
+    // If anything fails, return a safe default state
+    console.error('Error in getState():', err);
+    return {
+      path: '',
+      valid: false,
+      volume: 0,
+      charEvent: true,
+      soundtrack: '',
+      playerVolume: '25',
+      isUpdateAvailable: false,
+      isUpdateDownloading: false,
+      isPoERunning: false
+    };
+  }
 }
 
 function updateAvailable(updater) {
@@ -340,17 +396,24 @@ function run(browserWindow) {
 
   setDefaults();
 
-  loadSoundtrack(settings.get('soundtrack'));
+  loadSoundtrack(settings.getSync('soundtrack'));
 
   startWatchingLog();
 
   ipcMain.on('setPoePath', (event, arg) => {
     if (arg && arg[0]) {
-      settings.set('poePath', arg[0]);
+      settings.setSync('poePath', arg[0]);
       if (doesLogExist()) {
         startWatchingLog();
       }
-      event.sender.send('updateState', getState());
+      try {
+        const state = getState();
+        if (event.sender && !event.sender.isDestroyed()) {
+          event.sender.send('updateState', state);
+        }
+      } catch (err) {
+        console.error('Error sending updateState:', err);
+      }
     }
   });
 
@@ -358,21 +421,38 @@ function run(browserWindow) {
     if (arg && arg[0]) {
       const itWorked = loadSoundtrack(arg[0]);
       if (itWorked) {
-        settings.set('soundtrack', arg[0]);
-        event.sender.send('updateState', getState());
+        settings.setSync('soundtrack', arg[0]);
+        try {
+        const state = getState();
+        if (event.sender && !event.sender.isDestroyed()) {
+          event.sender.send('updateState', state);
+        }
+      } catch (err) {
+        console.error('Error sending updateState:', err);
+      }
       }
     }
   });
 
   ipcMain.on('setPlayerVolume', (event, arg) => {
     if (arg) {
-        settings.set('playerVolume', arg);
+        settings.setSync('playerVolume', arg);
     }
   });
 
   ipcMain.on('updateState', (event) => {
     updateRunningStatus();
-    event.sender.send('updateState', getState());
+    // Use setImmediate to ensure state is ready and avoid race conditions
+    setImmediate(() => {
+      try {
+        const state = getState();
+        if (event.sender && !event.sender.isDestroyed()) {
+          event.sender.send('updateState', state);
+        }
+      } catch (err) {
+        console.error('Error sending updateState:', err);
+      }
+    });
   });
 
   ipcMain.on('installUpdate', (event, arg) => {

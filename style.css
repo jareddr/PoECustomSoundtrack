@@ -1,11 +1,13 @@
 body {
   border: 0px;
   padding: 0px;
+  margin: 0px;
   font-family: 'Exocet Light';
   font-weight: bold;
   color: #ddd;
   font-size: 18px;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100vh;
 }
 
 .d2button {

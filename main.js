@@ -5,7 +5,6 @@ const { version } = require('./package.json');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const url = require('url');
 const { dialog } = require('electron');
 autoUpdater.logger = require('electron-log');
 
@@ -54,7 +53,7 @@ function getMimeType(filePath) {
 function startLocalServer() {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
-      const parsedUrl = url.parse(req.url);
+      const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       let filePath = parsedUrl.pathname;
 
       // Serve index.html for root path
@@ -140,7 +139,6 @@ function createWindow() {
       nodeIntegration: true,
       nodeIntegrationInWorker: true,
       contextIsolation: false,
-      enableRemoteModule: true,
     }
   });
 
