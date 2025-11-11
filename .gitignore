@@ -5,6 +5,7 @@ diablo2.soundtrack
 settings.json
 build
 dist
+dist-renderer
 electron-builder.yaml
 dev-app-update.yml
 .vscode

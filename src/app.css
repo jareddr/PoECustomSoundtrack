@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Exocet Light';
+  src: url('/EXL_____.eot?') format('eot'), 
+       url('/EXL_____.woff') format('woff'),
+       url('/EXL_____.ttf') format('truetype'),
+       url('/EXL_____.svg#ExocetLight') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@layer components {
+  .d2button {
+    @apply bg-d2-button rounded-d2 border-2 border-d2-button-border inline-block cursor-pointer text-d2-text-dark text-xs font-bold py-0.5 px-1 mt-1.5 no-underline;
+  }
+  
+  .d2button:hover {
+    @apply bg-d2-button-hover;
+  }
+  
+  .d2button:active {
+    @apply relative top-px;
+  }
+  
+  .btn-primary {
+    @apply bg-d2-primary;
+  }
+  
+  .btn-secondary {
+    @apply bg-d2-secondary;
+  }
+}
+

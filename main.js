@@ -27,6 +27,9 @@ let mainWindow;
 let localServer = null;
 let serverPort = null;
 
+const isDevelopment = process.env.NODE_ENV === 'development';
+const VITE_DEV_SERVER_URL = 'http://localhost:5173';
+
 // Get MIME type based on file extension
 function getMimeType(filePath) {
   const ext = path.extname(filePath).toLowerCase();
@@ -49,9 +52,11 @@ function getMimeType(filePath) {
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
-// Start local HTTP server to serve the app
+// Start local HTTP server to serve the built app (production only)
 function startLocalServer() {
   return new Promise((resolve, reject) => {
+    const distPath = path.join(__dirname, 'dist-renderer');
+    
     const server = http.createServer((req, res) => {
       const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       let filePath = parsedUrl.pathname;
@@ -61,11 +66,11 @@ function startLocalServer() {
         filePath = '/index.html';
       }
 
-      // Remove leading slash and resolve from __dirname
-      const fullPath = path.join(__dirname, filePath.substring(1));
+      // Remove leading slash and resolve from dist-renderer
+      const fullPath = path.join(distPath, filePath.substring(1));
 
-      // Security check: ensure file is within __dirname
-      if (!fullPath.startsWith(__dirname)) {
+      // Security check: ensure file is within dist-renderer
+      if (!fullPath.startsWith(distPath)) {
         res.writeHead(403, { 'Content-Type': 'text/plain' });
         res.end('Forbidden');
         return;
@@ -134,7 +139,7 @@ function createWindow() {
     minimizable: false,
     maximizable: false,
     title: `PoE Custom Soundtrack v${version}`,
-    icon: './piety.ico',
+    icon: './pietyd2.ico',
     webPreferences: {
       nodeIntegration: true,
       nodeIntegrationInWorker: true,
@@ -143,11 +148,16 @@ function createWindow() {
   });
 
   mainWindow.setMenu(null);
-  // and load the index.html of the app from the local HTTP server.
-  mainWindow.loadURL(`http://127.0.0.1:${serverPort}/`);
+  
+  // Load the app - use Vite dev server in development, built files in production
+  if (isDevelopment) {
+    mainWindow.loadURL(VITE_DEV_SERVER_URL);
+  } else {
+    mainWindow.loadURL(`http://127.0.0.1:${serverPort}/`);
+  }
 
   // Open the DevTools.
-  if(process.env.NODE_ENV === 'development'){
+  if(isDevelopment){
    mainWindow.webContents.openDevTools();
   }
 
@@ -167,7 +177,10 @@ function createWindow() {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
   try {
-    await startLocalServer();
+    // Only start local server in production (dev uses Vite dev server)
+    if (!isDevelopment) {
+      await startLocalServer();
+    }
     createWindow();
     autoUpdater.checkForUpdates();
     
