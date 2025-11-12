@@ -6,31 +6,33 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { dialog } = require('electron');
+const constants = require('./constants.js');
+
 autoUpdater.logger = require('electron-log');
 
-if(process.env.NODE_ENV === 'development'){
+if (process.env.NODE_ENV === 'development') {
   autoUpdater.updateConfigPath = 'dev-app-update.yml';
 }
 
 autoUpdater.logger.transports.file.level = 'info';
 autoUpdater.autoDownload = false;
 
-// Module to control application life.
-const app = electron.app;
-
-// Module to create native browser window.
-const BrowserWindow = electron.BrowserWindow;
+const { app, BrowserWindow, ipcMain } = electron;
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let mainWindow;
+let mainWindow = null;
 let localServer = null;
 let serverPort = null;
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const VITE_DEV_SERVER_URL = 'http://localhost:5173';
 
-// Get MIME type based on file extension
+/**
+ * Get MIME type based on file extension
+ * @param {string} filePath - Path to the file
+ * @returns {string} MIME type for the file
+ */
 function getMimeType(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   const mimeTypes = {
@@ -52,11 +54,14 @@ function getMimeType(filePath) {
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
-// Start local HTTP server to serve the built app (production only)
+/**
+ * Start local HTTP server to serve the built app (production only)
+ * @returns {Promise<{server: http.Server, port: number}>} Promise resolving to server and port
+ */
 function startLocalServer() {
   return new Promise((resolve, reject) => {
     const distPath = path.join(__dirname, 'dist-renderer');
-    
+
     const server = http.createServer((req, res) => {
       const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       let filePath = parsedUrl.pathname;
@@ -99,12 +104,12 @@ function startLocalServer() {
       });
     });
 
-    // Try to start server on port 3000, or find an available port
-    let currentPort = 3000;
-    const maxPort = 3010;
-    
+    // Try to start server on default port, or find an available port
+    let currentPort = constants.SERVER.DEFAULT_PORT;
+    const maxPort = constants.SERVER.MAX_PORT;
+
     const tryStartServer = () => {
-      server.listen(currentPort, '127.0.0.1', () => {
+      server.listen(currentPort, constants.SERVER.HOST, () => {
         localServer = server;
         serverPort = currentPort;
         resolve({ server, port: currentPort });
@@ -119,7 +124,7 @@ function startLocalServer() {
         if (currentPort <= maxPort) {
           tryStartServer();
         } else {
-          reject(new Error('Could not find an available port'));
+          reject(new Error(`Could not find an available port between ${constants.SERVER.DEFAULT_PORT} and ${maxPort}`));
         }
       } else {
         reject(err);
@@ -130,8 +135,11 @@ function startLocalServer() {
   });
 }
 
+/**
+ * Create the main application window
+ */
 function createWindow() {
-  // Create the browser window.
+  // Create the browser window
   mainWindow = new BrowserWindow({
     width: 320,
     height: 535,
@@ -144,58 +152,55 @@ function createWindow() {
       nodeIntegration: true,
       nodeIntegrationInWorker: true,
       contextIsolation: false,
-    }
+    },
   });
 
   mainWindow.setMenu(null);
-  
+
   // Load the app - use Vite dev server in development, built files in production
   if (isDevelopment) {
     mainWindow.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    mainWindow.loadURL(`http://127.0.0.1:${serverPort}/`);
+    mainWindow.loadURL(`http://${constants.SERVER.HOST}:${serverPort}/`);
   }
 
-  // Open the DevTools.
-  if(isDevelopment){
-   mainWindow.webContents.openDevTools();
+  // Open the DevTools in development
+  if (isDevelopment) {
+    mainWindow.webContents.openDevTools();
   }
 
   poeCustomSoundtrack.run(mainWindow);
 
-  // Emitted when the window is closed.
+  // Emitted when the window is closed
   mainWindow.on('closed', () => {
-    // Dereference the window object, usually you would store windows
-    // in an array if your app supports multi windows, this is the time
-    // when you should delete the corresponding element.
+    // Dereference the window object
     mainWindow = null;
   });
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.on('ready', async () => {
-  try {
-    // Only start local server in production (dev uses Vite dev server)
-    if (!isDevelopment) {
-      await startLocalServer();
-    }
-    createWindow();
-    autoUpdater.checkForUpdates();
-    
-    // IPC handlers for dialog operations (replacing electron.remote)
-    electron.ipcMain.handle('open-directory-dialog', async () => {
-      const window = mainWindow || BrowserWindow.getAllWindows()[0];
+/**
+ * Initialize IPC handlers for dialog operations
+ */
+function setupIpcHandlers() {
+  // IPC handler for directory selection dialog
+  ipcMain.handle('open-directory-dialog', async () => {
+    const window = mainWindow || BrowserWindow.getAllWindows()[0];
+    try {
       const result = await dialog.showOpenDialog(window, {
         title: 'Locate PoE Directory',
         properties: ['openDirectory'],
       });
       return result;
-    });
+    } catch (error) {
+      console.error('Error opening directory dialog:', error);
+      return { canceled: true };
+    }
+  });
 
-    electron.ipcMain.handle('open-file-dialog', async (event, options) => {
-      const window = mainWindow || BrowserWindow.getAllWindows()[0];
+  // IPC handler for file selection dialog
+  ipcMain.handle('open-file-dialog', async (event, options) => {
+    const window = mainWindow || BrowserWindow.getAllWindows()[0];
+    try {
       const result = await dialog.showOpenDialog(window, {
         title: 'Load Custom Soundtrack',
         defaultPath: app.getAppPath(),
@@ -207,52 +212,84 @@ app.on('ready', async () => {
         ...options,
       });
       return result;
-    });
+    } catch (error) {
+      console.error('Error opening file dialog:', error);
+      return { canceled: true };
+    }
+  });
 
-    electron.ipcMain.handle('get-app-path', () => {
-      return app.getAppPath();
-    });
+  // IPC handler to get application path
+  ipcMain.handle('get-app-path', () => {
+    return app.getAppPath();
+  });
+}
+
+/**
+ * This method will be called when Electron has finished
+ * initialization and is ready to create browser windows.
+ * Some APIs can only be used after this event occurs.
+ */
+app.on('ready', async () => {
+  try {
+    // Only start local server in production (dev uses Vite dev server)
+    if (!isDevelopment) {
+      await startLocalServer();
+    }
+    createWindow();
+    setupIpcHandlers();
+    autoUpdater.checkForUpdates();
   } catch (error) {
-    console.error('Failed to start local server:', error);
+    console.error('Failed to initialize application:', error);
     app.quit();
   }
 });
 
-// Quit when all windows are closed.
-app.on('window-all-closed', () => {
-  // On OS X it is common for applications and their menu bar
-  // to stay active until the user quits explicitly with Cmd + Q
-  if (process.platform !== 'darwin') {
-    if (localServer) {
+/**
+ * Clean up local server resources
+ */
+function cleanupServer() {
+  if (localServer) {
+    try {
       localServer.close();
       localServer = null;
+      serverPort = null;
+    } catch (error) {
+      console.error('Error closing local server:', error);
     }
+  }
+}
+
+// Quit when all windows are closed
+app.on('window-all-closed', () => {
+  // On macOS it is common for applications and their menu bar
+  // to stay active until the user quits explicitly with Cmd + Q
+  if (process.platform !== 'darwin') {
+    cleanupServer();
     app.quit();
   }
 });
 
 // Clean up server before quitting
 app.on('before-quit', () => {
-  if (localServer) {
-    localServer.close();
-    localServer = null;
-  }
+  cleanupServer();
 });
 
+// Re-create window when dock icon is clicked (macOS)
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) {
     createWindow();
   }
 });
 
+// Auto-updater event handlers
 autoUpdater.on('update-available', (info) => {
   poeCustomSoundtrack.updateAvailable(autoUpdater);
-})
+});
+
 autoUpdater.on('download-progress', (progressObj) => {
   poeCustomSoundtrack.updateDownloading();
-})
+});
+
 autoUpdater.on('update-downloaded', (info) => {
-  autoUpdater.quitAndInstall();  
-})
+  autoUpdater.quitAndInstall();
+});

@@ -1,4 +1,4 @@
-let soundtrack = {
+const soundtrack = {
 	"tracks": [
 	    {"name": "options", "location": "https://www.youtube.com/watch?v=AoTDngh-d2E"},
 	    {"name": "rogue_encampment", "location": "https://www.youtube.com/watch?v=t1Zf9w--VhM"},
@@ -710,5 +710,5 @@ let soundtrack = {
 }  
 
 module.exports = {
-	soundtrack: soundtrack
-}
+  soundtrack,
+};

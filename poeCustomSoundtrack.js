@@ -1,20 +1,17 @@
-const {
-  ipcMain,
-} = require('electron');
+const { ipcMain } = require('electron');
 const defaults = require('./defaults.js');
 const fs = require('fs');
 const fileTail = require('file-tail');
 const psList = require('ps-list');
 const { version } = require('./package.json');
-
-const DEFAULT_POE_PATH = 'C:\\Program Files\\Grinding Gear Games\\Path of Exile\\';
-//  load settings from disk
+const constants = require('./constants.js');
 const settings = require('electron-settings');
+const bosses = require('./bosses.js');
 
-let mainWindow;
+let mainWindow = null;
 let currentTrackName = false;
 let currentTrackId = false;
-let ft;
+let fileTailInstance = null;
 let isUpdateAvailable = false;
 let isUpdateDownloading = false;
 let autoUpdater = false;
@@ -22,69 +19,80 @@ let isPoERunning = false;
 
 let soundtrack = defaults.soundtrack;
 
-// File containing boss dialogs.
-const bosses = require('./bosses.js');
-
-function reset(){
+/**
+ * Reset current track tracking state
+ */
+function reset() {
   currentTrackName = false;
   currentTrackId = false;
 }
 
-function updateRunningStatus(){
-  psList().then(function(ps){
-    let wasPoERunning = isPoERunning;
+/**
+ * Update the running status of Path of Exile by checking process list
+ */
+function updateRunningStatus() {
+  psList()
+    .then((processes) => {
+      const wasPoERunning = isPoERunning;
+      const running = processes.filter((proc) => proc.name.match(/pathofexile/i));
+      isPoERunning = running.length > 0;
 
-    const running = ps.filter(proc => proc.name.match(/pathofexile/i));
-    isPoERunning = running.length > 0;
-
-    if(wasPoERunning === true && isPoERunning === false){
-      reset();
-    }
-  }).catch(function(err){
-    // Silently handle errors from process list check (e.g., tasklist command cancelled)
-    // This prevents unhandled promise rejection warnings
-    console.log('Process list check failed:', err.message);
-  })
+      if (wasPoERunning === true && isPoERunning === false) {
+        reset();
+      }
+    })
+    .catch((err) => {
+      // Silently handle errors from process list check (e.g., tasklist command cancelled)
+      // This prevents unhandled promise rejection warnings
+      console.warn('Process list check failed:', err.message);
+    });
 }
 
 
 
+/**
+ * Determine the track type based on location URL
+ * @param {string} location - Track location URL or path
+ * @returns {string} Track type: 'youtube', 'soundcloud', or 'local'
+ */
 function getTrackType(location) {
   if (location.match(/http/) && location.match(/youtu/)) {
     return 'youtube';
   } else if (location.match(/http/) && location.match(/soundcloud/)) {
     return 'soundcloud';
   }
-
   return 'local';
 }
 
+/**
+ * Extract track ID from location URL
+ * @param {string} location - Track location URL or path
+ * @returns {string|false} Track ID or false if not found
+ */
 function getTrackId(location) {
-  let id = false;
   const type = getTrackType(location);
   if (type === 'youtube' && location.match(/\?v=(.{11})/)) {
-    id = location.match(/\?v=(.{11})/)[1];
+    return location.match(/\?v=(.{11})/)[1];
   } else if (type === 'local') {
-    id = location;
+    return location;
   }
-  return id;
+  return false;
 }
 
-// function getDurationInSeconds(length) {
-//   const parts = length.split(':');
-//   if (parts.length === 3) {
-//     return (parseInt(parts[0], 10) * 60 * 60) + (parseInt(parts[1], 10) * 60)
-// + parseInt(parts[2], 10);
-//   } else if (parts.length === 2) {
-//     return (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10);
-//   }
-//   return parseInt(parts[0], 10);
-// }
-
+/**
+ * Get the Path of Exile client log file path
+ * @param {string} poePath - Path of Exile installation directory
+ * @returns {string} Full path to Client.txt log file
+ */
 function getLogFile(poePath) {
-  return `${poePath}\\logs\\Client.txt`;
+  return `${poePath}\\${constants.PATHS.LOG_SUBDIRECTORY}\\${constants.PATHS.LOG_FILE_NAME}`;
 }
 
+/**
+ * Generate a track object from track data
+ * @param {Object} track - Track data object
+ * @returns {Object} Track object with type, id, name, and endSeconds
+ */
 function generateTrack(track) {
   const type = getTrackType(track.location);
   const id = getTrackId(track.location);
@@ -92,147 +100,179 @@ function generateTrack(track) {
     type,
     id,
     name: track.name,
-    endSeconds: track.endSeconds // Optional ending time in seconds to loop earlier.
+    endSeconds: track.endSeconds, // Optional ending time in seconds to loop earlier
   };
 }
 
+/**
+ * Select a random element from array, excluding current track if possible
+ * @param {Array} arr - Array of track objects
+ * @returns {Object|false} Random track object or false if array is empty
+ */
 function randomElement(arr) {
-  
-  // Array with more than 1 unique track ID always change track.
+  if (!arr || arr.length === 0) {
+    return false;
+  }
 
-  // Find tracks other than current track.
-  const otherTrackArr = arr.filter(t => getTrackId(t.location) !== currentTrackId);
-  
+  // Find tracks other than current track
+  const otherTrackArr = arr.filter((t) => getTrackId(t.location) !== currentTrackId);
+
   if (otherTrackArr.length === 0) {
-    // No other tracks.
-    // Reuse current track.
-    return arr ? arr[0] : false;
-  } else {
-    // Has other tracks.
-    // Exclude current track and pick a random track.
-    return otherTrackArr ? otherTrackArr[Math.floor(Math.random() * otherTrackArr.length)] : false;
+    // No other tracks, reuse current track
+    return arr[0];
   }
-  
-  //return arr ? arr[Math.floor(Math.random() * arr.length)] : false;
+
+  // Has other tracks, exclude current track and pick a random one
+  return otherTrackArr[Math.floor(Math.random() * otherTrackArr.length)];
 }
 
+/**
+ * Get a track for the given area name
+ * @param {string} areaName - Name of the area/zone
+ * @returns {Object|false} Track object or false if no track found
+ */
 function getTrack(areaName) {
-  // How to find a track
-  // Get area_name from log
-  // Look up track_name from soundtrack.map[area_name]
-  // Look up track from _.where(soundtrack.tracks, {name: track_name})
-  let track = false;
   const trackName = soundtrack.map[areaName];
-  // if track name is random, choose a random track from the entire track list
-  // Otherwise filter the list of tracks by matching names and then randomly choose one that matches
-  const trackData = trackName === 'random' ? randomElement(soundtrack.tracks) : randomElement(soundtrack.tracks.filter(t => t.name === trackName));
-  if (trackData) {
-    track = generateTrack(trackData);
+  if (!trackName) {
+    return false;
   }
-  return track;
+
+  // If track name is 'random', choose a random track from the entire track list
+  // Otherwise filter the list of tracks by matching names and randomly choose one
+  const tracksToChooseFrom = trackName === 'random'
+    ? soundtrack.tracks
+    : soundtrack.tracks.filter((t) => t.name === trackName);
+
+  const trackData = randomElement(tracksToChooseFrom);
+  if (!trackData) {
+    return false;
+  }
+
+  return generateTrack(trackData);
 }
 
 
-function parseLogLine(line) {
+/**
+ * Send track change to renderer process
+ * @param {Object} track - Track object to send
+ */
+function sendTrackChange(track) {
+  if (!mainWindow || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
 
-  //assume POE is running if a new log line come sin
+  // Ensure track object is serializable for IPC
+  const serializableTrack = {
+    type: String(track.type || ''),
+    id: String(track.id || ''),
+    name: String(track.name || ''),
+    endSeconds: track.endSeconds ? Number(track.endSeconds) : undefined,
+  };
+
+  try {
+    mainWindow.webContents.send('changeTrack', serializableTrack);
+  } catch (err) {
+    console.error('Error sending changeTrack:', err);
+  }
+}
+
+/**
+ * Parse a line from the Path of Exile log file and trigger track changes
+ * @param {string} line - Line from the log file
+ */
+function parseLogLine(line) {
+  // Assume PoE is running if a new log line comes in
   isPoERunning = true;
 
-  // watch log file for area changes
+  // Watch log file for area changes
   let newArea = line.match(/You have entered ([^.]*)./);
 
-  // also watch for poe to boot up and play login window music
+  // Also watch for PoE to boot up and play login window music
   const loginWindow = line.match(/LOG FILE OPENING/);
-  
-  // exit to login window
+
+  // Exit to login window
   const exitWindow = line.match(/] Async connecting to /)
     || line.match(/] Abnormal disconnect: An unexpected disconnection occurred./);
-  
+
   if (loginWindow || exitWindow) {
     newArea = ['login', 'login'];
   }
 
-  // Gets the boss name if the logs contains boss dialog.
+  // Get the boss name if the logs contains boss dialog
   const boss = getBoss(line);
   if (boss) {
-    // Boss music will be handled by the soundtrack json similar to new areas.
+    // Boss music will be handled by the soundtrack json similar to new areas
     newArea = [boss, boss];
   }
-  
-  if (newArea) {
-    const areaCode = newArea[1];
-    const track = getTrack(areaCode);
-    if (track) {
-      if (areaCode === 'login' && currentTrackName !== track.name // Login screen uses existing logic
-          || areaCode !== 'login' && currentTrackId !== track.id) { // Zone transition checks track ID instead of track names
-        currentTrackName = track.name;
-        currentTrackId = track.id;
-        // Ensure track object is serializable for IPC
-        const serializableTrack = {
-          type: String(track.type || ''),
-          id: String(track.id || ''),
-          name: String(track.name || ''),
-          endSeconds: track.endSeconds ? Number(track.endSeconds) : undefined
-        };
-        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-          try {
-            mainWindow.webContents.send('changeTrack', serializableTrack);
-          } catch (err) {
-            console.error('Error sending changeTrack:', err);
-          }
-        }
-      }
-    }
+
+  if (!newArea) {
+    return;
+  }
+
+  const areaCode = newArea[1];
+  const track = getTrack(areaCode);
+  if (!track) {
+    return;
+  }
+
+  // Login screen uses existing logic (check track name)
+  // Zone transition checks track ID instead of track names
+  const shouldChangeTrack = areaCode === 'login'
+    ? currentTrackName !== track.name
+    : currentTrackId !== track.id;
+
+  if (shouldChangeTrack) {
+    currentTrackName = track.name;
+    currentTrackId = track.id;
+    sendTrackChange(track);
   }
 }
 
-// Checks whether a line in the logs contains boss dialog.
+/**
+ * Check whether a line in the logs contains boss dialog
+ * @param {string} line - Line from the log file
+ * @returns {string|null} Boss name if found, null otherwise
+ */
 function getBoss(line) {
   try {
-    // If contains boss dialog, returns the boss name.
-    return bosses.dialog[line.substring(line.lastIndexOf('] ') + 2)];
+    const dialogText = line.substring(line.lastIndexOf('] ') + 2);
+    return bosses.dialog[dialogText] || null;
   } catch (err) {
-    // Otherwise returns null.
     return null;
   }
 }
 
+/**
+ * Start watching the Path of Exile log file for changes
+ */
 function startWatchingLog() {
-  // if we're already watching a file, lets stop before watching a new file
-  if (ft && ft.stop) {
-    ft.stop();
+  // If we're already watching a file, stop before watching a new file
+  if (fileTailInstance && fileTailInstance.stop) {
+    fileTailInstance.stop();
   }
 
-  ft = fileTail.startTailing(getLogFile(settings.getSync('poePath')));
-  ft.on('line', parseLogLine);
+  const poePath = settings.getSync('poePath');
+  if (!poePath) {
+    console.warn('PoE path not set, cannot watch log file');
+    return;
+  }
+
+  try {
+    fileTailInstance = fileTail.startTailing(getLogFile(poePath));
+    fileTailInstance.on('line', parseLogLine);
+  } catch (err) {
+    console.error('Error starting log file watch:', err);
+  }
 }
 
+/**
+ * Check if a file exists
+ * @param {string} file - Path to the file
+ * @returns {boolean} True if file exists, false otherwise
+ */
 function doesFileExist(file) {
   try {
     const handle = fs.openSync(file, 'r+');
-    fs.closeSync(handle);
-  } catch (err) {
-    return false;
-  }
-  return true;
-}
-
-// let debugLog = function(line) {
-//   try{
-//     let handle = fs.openSync("debug.log", 'a');
-//     fs.writeFileSync(file, line);
-//     fs.closeSync(handle);
-//     return true;
-//   } catch (err) {
-//     return false;
-//   }
-
-// }
-
-function writeFile(file, data) {
-  try {
-    const handle = fs.openSync(file, 'w');
-    fs.writeFileSync(file, data);
     fs.closeSync(handle);
     return true;
   } catch (err) {
@@ -240,6 +280,29 @@ function writeFile(file, data) {
   }
 }
 
+/**
+ * Write data to a file
+ * @param {string} file - Path to the file
+ * @param {string} data - Data to write
+ * @returns {boolean} True if successful, false otherwise
+ */
+function writeFile(file, data) {
+  try {
+    const handle = fs.openSync(file, 'w');
+    fs.writeFileSync(file, data);
+    fs.closeSync(handle);
+    return true;
+  } catch (err) {
+    console.error(`Error writing file ${file}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Read and parse a JSON file
+ * @param {string} file - Path to the JSON file
+ * @returns {Object|false} Parsed JSON object or false on error
+ */
 function readJsonFile(file) {
   try {
     const handle = fs.openSync(file, 'r+');
@@ -249,9 +312,11 @@ function readJsonFile(file) {
     return JSON.parse(data);
   } catch (err) {
     const errorMsg = String(err.message || 'Unknown error');
+    console.error(`Error reading JSON file ${file}:`, errorMsg);
+
     if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
       try {
-        mainWindow.webContents.send('errorMessage', `Error loading: ${file} \n ${errorMsg}`);
+        mainWindow.webContents.send('errorMessage', `Error loading: ${file}\n${errorMsg}`);
       } catch (sendErr) {
         console.error('Error sending errorMessage:', sendErr);
       }
@@ -260,14 +325,25 @@ function readJsonFile(file) {
   }
 }
 
+/**
+ * Check if the Path of Exile log file exists
+ * @returns {boolean} True if log file exists, false otherwise
+ */
 function doesLogExist() {
-  const file = getLogFile(settings.getSync('poePath'));
+  const poePath = settings.getSync('poePath');
+  if (!poePath) {
+    return false;
+  }
+  const file = getLogFile(poePath);
   return doesFileExist(file);
 }
 
 
-// Helper function to find the Path of Exile config file
-// Handles cases where Documents folder might be in OneDrive
+/**
+ * Helper function to find the Path of Exile config file
+ * Handles cases where Documents folder might be in OneDrive
+ * @returns {string} Path to the config file
+ */
 function findPoEConfigFile() {
   if (process.platform !== 'win32') {
     // Non-Windows: use HOME
@@ -282,18 +358,15 @@ function findPoEConfigFile() {
     // OneDrive Documents location
     `${userProfile}\\OneDrive\\Documents\\My Games\\Path of Exile\\production_Config.ini`,
     // Check OneDrive environment variable if set
-    process.env.ONEDRIVE ? `${process.env.ONEDRIVE}\\Documents\\My Games\\Path of Exile\\production_Config.ini` : null,
-  ].filter(path => path !== null);
+    process.env.ONEDRIVE
+      ? `${process.env.ONEDRIVE}\\Documents\\My Games\\Path of Exile\\production_Config.ini`
+      : null,
+  ].filter((path) => path !== null);
 
   // Try each path and return the first one that exists
   for (const configPath of possiblePaths) {
-    try {
-      if (doesFileExist(configPath)) {
-        return configPath;
-      }
-    } catch (err) {
-      // Continue to next path
-      continue;
+    if (doesFileExist(configPath)) {
+      return configPath;
     }
   }
 
@@ -301,100 +374,139 @@ function findPoEConfigFile() {
   return possiblePaths[0];
 }
 
+/**
+ * Check the music volume setting in PoE config file
+ * @returns {number|false} Music volume (0-100) or false if not found/error
+ */
 function checkMusicVolume() {
   const configFile = findPoEConfigFile();
+  if (!configFile) {
+    return false;
+  }
+
   try {
     const handle = fs.openSync(configFile, 'r+');
     const data = fs.readFileSync(configFile, 'utf-8');
     fs.closeSync(handle);
-    if (data.match(/music_volume[2]=(\d+)/ig)) {
-      return parseInt(data.match(/music_volume[2]=(\d+)/)[1], 10);
+
+    const match = data.match(/music_volume[2]=(\d+)/i);
+    if (match) {
+      return parseInt(match[1], 10);
     }
   } catch (err) {
+    console.warn('Error reading music volume from config:', err.message);
     return false;
   }
+
   return false;
 }
 
+/**
+ * Check if character event voices are disabled in PoE config file
+ * @returns {boolean|false} True if disabled, false if enabled, or false on error
+ */
 function checkCharEvent() {
   const configFile = findPoEConfigFile();
+  if (!configFile) {
+    return false;
+  }
+
   try {
     const handle = fs.openSync(configFile, 'r+');
     const data = fs.readFileSync(configFile, 'utf-8');
     fs.closeSync(handle);
-    if (data.match(/disable_char_events=(\w+)/ig)) {
-      return data.match(/disable_char_events=(\w+)/)[1] === 'true';
+
+    const match = data.match(/disable_char_events=(\w+)/i);
+    if (match) {
+      return match[1] === 'true';
     }
   } catch (err) {
+    console.warn('Error reading char events setting from config:', err.message);
     return false;
   }
+
   return false;
 }
 
+/**
+ * Set default settings and create default soundtrack file if needed
+ */
 function setDefaults() {
-  //  make sure default soundtrack is on disk
-
-  if (!doesFileExist(`diablo2-v${version}.soundtrack`)) {
-    writeFile(`diablo2-v${version}.soundtrack`, JSON.stringify(defaults.soundtrack, null, '\t'));
+  // Make sure default soundtrack is on disk
+  const defaultSoundtrackFile = `diablo2-v${version}.soundtrack`;
+  if (!doesFileExist(defaultSoundtrackFile)) {
+    writeFile(
+      defaultSoundtrackFile,
+      JSON.stringify(defaults.soundtrack, null, '\t')
+    );
   }
 
-  // define poePath in settings if not set
+  // Define poePath in settings if not set
   if (!settings.getSync('poePath')) {
-    settings.setSync('poePath', DEFAULT_POE_PATH);
+    settings.setSync('poePath', constants.PATHS.DEFAULT_POE_PATH);
   }
 
-  // define selected soundtrack if not set
+  // Define selected soundtrack if not set
   if (!settings.getSync('soundtrack')) {
-    settings.setSync('soundtrack', `diablo2-v${version}.soundtrack`);
+    settings.setSync('soundtrack', defaultSoundtrackFile);
   }
 
-    // define player volume if not set
-    if (!settings.getSync('playerVolume')) {
-      settings.setSync('playerVolume', '25');
-    }
+  // Define player volume if not set
+  if (!settings.getSync('playerVolume')) {
+    settings.setSync('playerVolume', String(constants.PLAYER.DEFAULT_VOLUME));
+  }
 }
 
+/**
+ * Load a soundtrack file
+ * @param {string} file - Path to the soundtrack file
+ * @returns {boolean} True if loaded successfully, false otherwise
+ */
 function loadSoundtrack(file) {
   const currentSoundtrack = soundtrack;
-  soundtrack = readJsonFile(file);
-  if (!soundtrack) {
-    soundtrack = currentSoundtrack;
+  const newSoundtrack = readJsonFile(file);
+  if (!newSoundtrack) {
     return false;
   }
+  soundtrack = newSoundtrack;
   return true;
 }
 
 
+/**
+ * Get the current application state for IPC transmission
+ * @returns {Object} State object with all serializable primitives
+ */
 function getState() {
   // Ensure all values are serializable primitives for IPC
   // Electron 31 has strict IPC serialization requirements
   try {
     // Get settings values using getSync() for synchronous access (electron-settings v4)
     const poePath = settings.getSync('poePath') || '';
-    const soundtrack = settings.getSync('soundtrack') || '';
-    const playerVolume = settings.getSync('playerVolume') || '25';
-    
+    const soundtrackPath = settings.getSync('soundtrack') || '';
+    const playerVolume = settings.getSync('playerVolume')
+      || String(constants.PLAYER.DEFAULT_VOLUME);
+
     const volume = checkMusicVolume();
     const charEvent = checkCharEvent();
     const logExists = doesLogExist();
-    
+
     // Create a plain object with only serializable primitives
     const state = {
       path: String(poePath),
       valid: Boolean(logExists),
       volume: (volume !== false && !isNaN(Number(volume))) ? Number(volume) : 0,
-      charEvent: charEvent,
-      soundtrack: String(soundtrack),
+      charEvent: Boolean(charEvent),
+      soundtrack: String(soundtrackPath),
       playerVolume: String(playerVolume),
       isUpdateAvailable: Boolean(isUpdateAvailable),
       isUpdateDownloading: Boolean(isUpdateDownloading),
-      isPoERunning: Boolean(isPoERunning)
+      isPoERunning: Boolean(isPoERunning),
     };
-    
+
     // Verify serializability by attempting to stringify
     JSON.stringify(state);
 
-      
     return state;
   } catch (err) {
     // If anything fails, return a safe default state
@@ -405,94 +517,104 @@ function getState() {
       volume: 0,
       charEvent: true,
       soundtrack: '',
-      playerVolume: '25',
+      playerVolume: String(constants.PLAYER.DEFAULT_VOLUME),
       isUpdateAvailable: false,
       isUpdateDownloading: false,
-      isPoERunning: false
+      isPoERunning: false,
     };
   }
 }
 
+/**
+ * Handle update available event
+ * @param {Object} updater - Auto-updater instance
+ */
 function updateAvailable(updater) {
   isUpdateAvailable = true;
   autoUpdater = updater;
 }
 
-function updateDownloading(){
-  isUpdateDownloading = true
+/**
+ * Handle update downloading event
+ */
+function updateDownloading() {
+  isUpdateDownloading = true;
 }
 
+/**
+ * Send state update to renderer process
+ * @param {Object} event - IPC event object
+ */
+function sendStateUpdate(event) {
+  try {
+    const state = getState();
+    if (event.sender && !event.sender.isDestroyed()) {
+      event.sender.send('updateState', state);
+    }
+  } catch (err) {
+    console.error('Error sending updateState:', err);
+  }
+}
+
+/**
+ * Initialize the application and set up IPC handlers
+ * @param {Object} browserWindow - Main browser window instance
+ */
 function run(browserWindow) {
   mainWindow = browserWindow;
 
   setDefaults();
-
   loadSoundtrack(settings.getSync('soundtrack'));
-
   startWatchingLog();
 
+  // IPC handler for setting PoE path
   ipcMain.on('setPoePath', (event, arg) => {
     if (arg && arg[0]) {
       settings.setSync('poePath', arg[0]);
       if (doesLogExist()) {
         startWatchingLog();
       }
-      try {
-        const state = getState();
-        if (event.sender && !event.sender.isDestroyed()) {
-          event.sender.send('updateState', state);
-        }
-      } catch (err) {
-        console.error('Error sending updateState:', err);
-      }
+      sendStateUpdate(event);
     }
   });
 
+  // IPC handler for setting soundtrack
   ipcMain.on('setSoundtrack', (event, arg) => {
     if (arg && arg[0]) {
-      const itWorked = loadSoundtrack(arg[0]);
-      if (itWorked) {
+      const loaded = loadSoundtrack(arg[0]);
+      if (loaded) {
         settings.setSync('soundtrack', arg[0]);
-        try {
-        const state = getState();
-        if (event.sender && !event.sender.isDestroyed()) {
-          event.sender.send('updateState', state);
-        }
-      } catch (err) {
-        console.error('Error sending updateState:', err);
-      }
+        sendStateUpdate(event);
       }
     }
   });
 
+  // IPC handler for setting player volume
   ipcMain.on('setPlayerVolume', (event, arg) => {
     if (arg) {
-        settings.setSync('playerVolume', arg);
+      settings.setSync('playerVolume', arg);
     }
   });
 
+  // IPC handler for requesting state update
   ipcMain.on('updateState', (event) => {
     updateRunningStatus();
     // Use setImmediate to ensure state is ready and avoid race conditions
     setImmediate(() => {
-      try {
-        const state = getState();
-        if (event.sender && !event.sender.isDestroyed()) {
-          event.sender.send('updateState', state);
-        }
-      } catch (err) {
-        console.error('Error sending updateState:', err);
-      }
+      sendStateUpdate(event);
     });
   });
 
-  ipcMain.on('installUpdate', (event, arg) => {
-    if(autoUpdater) autoUpdater.downloadUpdate();
-  })
+  // IPC handler for installing update
+  ipcMain.on('installUpdate', () => {
+    if (autoUpdater) {
+      autoUpdater.downloadUpdate();
+    }
+  });
 }
 
 module.exports = {
   run,
   updateAvailable,
-  updateDownloading
+  updateDownloading,
 };
