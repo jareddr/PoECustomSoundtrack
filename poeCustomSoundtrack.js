@@ -19,6 +19,11 @@ let isPoERunning = false;
 
 let soundtrack = defaults.soundtrack;
 
+// State tracking for change detection
+let configFileWatcher = null;
+let poeStatusCheckInterval = null;
+let lastState = null;
+
 /**
  * Reset current track tracking state
  */
@@ -29,9 +34,10 @@ function reset() {
 
 /**
  * Update the running status of Path of Exile by checking process list
+ * @returns {Promise<boolean>} True if status changed, false otherwise
  */
 function updateRunningStatus() {
-  psList()
+  return psList()
     .then((processes) => {
       const wasPoERunning = isPoERunning;
       const running = processes.filter((proc) => proc.name.match(/pathofexile/i));
@@ -40,11 +46,15 @@ function updateRunningStatus() {
       if (wasPoERunning === true && isPoERunning === false) {
         reset();
       }
+
+      // Return true if status changed
+      return wasPoERunning !== isPoERunning;
     })
     .catch((err) => {
       // Silently handle errors from process list check (e.g., tasklist command cancelled)
       // This prevents unhandled promise rejection warnings
       console.warn('Process list check failed:', err.message);
+      return false;
     });
 }
 
@@ -182,7 +192,13 @@ function sendTrackChange(track) {
  */
 function parseLogLine(line) {
   // Assume PoE is running if a new log line comes in
+  const wasPoERunning = isPoERunning;
   isPoERunning = true;
+  
+  // Broadcast state if PoE just started running
+  if (!wasPoERunning && isPoERunning) {
+    broadcastStateUpdate();
+  }
 
   // Watch log file for area changes
   let newArea = line.match(/You have entered ([^.]*)./);
@@ -260,8 +276,13 @@ function startWatchingLog() {
   try {
     fileTailInstance = fileTail.startTailing(getLogFile(poePath));
     fileTailInstance.on('line', parseLogLine);
+    
+    // Broadcast state update when log file watching starts (log file existence may have changed)
+    broadcastStateUpdate();
   } catch (err) {
     console.error('Error starting log file watch:', err);
+    // Still broadcast state even if watching fails (log file might not exist)
+    broadcastStateUpdate();
   }
 }
 
@@ -429,6 +450,78 @@ function checkCharEvent() {
 }
 
 /**
+ * Watch PoE config file for changes and broadcast state updates when config values change
+ */
+function watchConfigFile() {
+  // Stop existing watcher if any
+  if (configFileWatcher) {
+    try {
+      configFileWatcher.close();
+    } catch (err) {
+      // Ignore errors when closing watcher
+    }
+    configFileWatcher = null;
+  }
+
+  const configFile = findPoEConfigFile();
+  if (!configFile || !doesFileExist(configFile)) {
+    return;
+  }
+
+  try {
+    // Use fs.watch to monitor config file changes
+    configFileWatcher = fs.watch(configFile, (eventType) => {
+      if (eventType === 'change') {
+        // Debounce: wait a bit before reading (file might still be writing)
+        setTimeout(() => {
+          // Re-read config values and broadcast if changed
+          broadcastStateUpdate();
+        }, 500);
+      }
+    });
+
+    configFileWatcher.on('error', (err) => {
+      console.warn('Config file watcher error:', err.message);
+      configFileWatcher = null;
+    });
+  } catch (err) {
+    console.warn('Error setting up config file watcher:', err.message);
+    configFileWatcher = null;
+  }
+}
+
+/**
+ * Start periodic check for PoE running status
+ * Only broadcasts state when status actually changes
+ */
+function startPoEStatusCheck() {
+  // Stop existing interval if any
+  if (poeStatusCheckInterval) {
+    clearInterval(poeStatusCheckInterval);
+    poeStatusCheckInterval = null;
+  }
+
+  // Check every 2-3 seconds (using 2500ms as a middle ground)
+  poeStatusCheckInterval = setInterval(() => {
+    updateRunningStatus().then((statusChanged) => {
+      if (statusChanged) {
+        broadcastStateUpdate();
+      }
+    });
+  }, 2500);
+}
+
+/**
+ * Stop periodic PoE status check
+ */
+function stopPoEStatusCheck() {
+  if (poeStatusCheckInterval) {
+    clearInterval(poeStatusCheckInterval);
+    poeStatusCheckInterval = null;
+  }
+}
+
+/**
  * Set default settings and create default soundtrack file if needed
  */
 function setDefaults() {
@@ -532,6 +625,7 @@ function getState() {
 function updateAvailable(updater) {
   isUpdateAvailable = true;
   autoUpdater = updater;
+  broadcastStateUpdate();
 }
 
 /**
@@ -539,10 +633,11 @@ function updateAvailable(updater) {
  */
 function updateDownloading() {
   isUpdateDownloading = true;
+  broadcastStateUpdate();
 }
 
 /**
- * Send state update to renderer process
+ * Send state update to renderer process (event-based, for IPC handlers)
  * @param {Object} event - IPC event object
  */
 function sendStateUpdate(event) {
@@ -550,9 +645,32 @@ function sendStateUpdate(event) {
     const state = getState();
     if (event.sender && !event.sender.isDestroyed()) {
       event.sender.send('updateState', state);
+      lastState = state;
     }
   } catch (err) {
     console.error('Error sending updateState:', err);
+  }
+}
+
+/**
+ * Broadcast state update to renderer process proactively (when state changes)
+ * Only sends if state has actually changed
+ */
+function broadcastStateUpdate() {
+  if (!mainWindow || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
+
+  try {
+    const state = getState();
+    
+    // Only broadcast if state has changed
+    if (lastState === null || JSON.stringify(state) !== JSON.stringify(lastState)) {
+      mainWindow.webContents.send('updateState', state);
+      lastState = state;
+    }
+  } catch (err) {
+    console.error('Error broadcasting updateState:', err);
   }
 }
 
@@ -566,6 +684,12 @@ function run(browserWindow) {
   setDefaults();
   loadSoundtrack(settings.getSync('soundtrack'));
   startWatchingLog();
+  
+  // Start watching config file for changes
+  watchConfigFile();
+  
+  // Start periodic PoE status check
+  startPoEStatusCheck();
 
   // IPC handler for setting PoE path
   ipcMain.on('setPoePath', (event, arg) => {
@@ -575,6 +699,8 @@ function run(browserWindow) {
         startWatchingLog();
       }
       sendStateUpdate(event);
+      // Also watch config file for the new path's config
+      watchConfigFile();
     }
   });
 
@@ -593,15 +719,18 @@ function run(browserWindow) {
   ipcMain.on('setPlayerVolume', (event, arg) => {
     if (arg) {
       settings.setSync('playerVolume', arg);
+      // Broadcast state update when volume changes
+      broadcastStateUpdate();
     }
   });
 
-  // IPC handler for requesting state update
+  // IPC handler for requesting state update (for initial load)
   ipcMain.on('updateState', (event) => {
-    updateRunningStatus();
-    // Use setImmediate to ensure state is ready and avoid race conditions
-    setImmediate(() => {
-      sendStateUpdate(event);
+    updateRunningStatus().then(() => {
+      // Use setImmediate to ensure state is ready and avoid race conditions
+      setImmediate(() => {
+        sendStateUpdate(event);
+      });
     });
   });
 

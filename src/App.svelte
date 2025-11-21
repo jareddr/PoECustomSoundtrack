@@ -16,7 +16,6 @@
   let isPlaying = false;
   
   let playerController = null;
-  let stateInterval = null;
   
   // Initialize player controller
   onMount(() => {
@@ -46,17 +45,9 @@
     
     // Request initial state
     ipcRenderer.send('updateState');
-    
-    // Poll for state updates every second
-    stateInterval = setInterval(() => {
-      ipcRenderer.send('updateState');
-    }, 1000);
   });
   
   onDestroy(() => {
-    if (stateInterval) {
-      clearInterval(stateInterval);
-    }
     // Remove IPC listeners
     ipcRenderer.removeAllListeners('changeTrack');
     ipcRenderer.removeAllListeners('updateState');
@@ -123,7 +114,6 @@
   function ignoreUpdateHandler() {
     ignoreUpdate = true;
     isUpdateAvailable = false;
-    ipcRenderer.send('updateState');
   }
 </script>
 
