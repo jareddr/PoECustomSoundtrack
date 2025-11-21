@@ -914,6 +914,152 @@ function run(browserWindow) {
       autoUpdater.downloadUpdate();
     }
   });
+
+  // IPC handler for getting soundtrack data
+  ipcMain.handle('getSoundtrackData', () => {
+    return {
+      data: soundtrack,
+      filePath: settings.getSync('soundtrack') || ''
+    };
+  });
+
+  // IPC handler for getting world areas data for autocomplete
+  ipcMain.handle('getWorldAreasData', (event, searchType, query) => {
+    if (!worldAreas) {
+      return [];
+    }
+
+    const results = [];
+    const queryLower = query.toLowerCase();
+    const maxResults = 50; // Limit results for performance
+
+    for (const zoneId in worldAreas) {
+      if (results.length >= maxResults) break;
+
+      const zone = worldAreas[zoneId];
+      if (!zone) continue;
+
+      let matches = false;
+      let displayValue = '';
+
+      if (searchType === 'name') {
+        if (zone.name && zone.name.toLowerCase().includes(queryLower)) {
+          matches = true;
+          displayValue = zone.name;
+        }
+      } else if (searchType === 'tag') {
+        if (Array.isArray(zone.tags)) {
+          for (const tag of zone.tags) {
+            if (tag && tag.toLowerCase().includes(queryLower)) {
+              matches = true;
+              displayValue = tag;
+              break;
+            }
+          }
+        }
+      } else if (searchType === 'area_type_tag') {
+        if (Array.isArray(zone.area_type_tags)) {
+          for (const areaTypeTag of zone.area_type_tags) {
+            if (areaTypeTag && areaTypeTag.toLowerCase().includes(queryLower)) {
+              matches = true;
+              displayValue = areaTypeTag;
+              break;
+            }
+          }
+        }
+      }
+
+      if (matches && !results.some(r => r.value === displayValue)) {
+        results.push({
+          value: displayValue,
+          type: searchType
+        });
+      }
+    }
+
+    return results;
+  });
+
+  // IPC handler for saving soundtrack to current file
+  ipcMain.handle('saveSoundtrack', (event, soundtrackData) => {
+    try {
+      const currentFile = settings.getSync('soundtrack');
+      if (!currentFile) {
+        return { success: false, error: 'No soundtrack file loaded' };
+      }
+
+      // Validate soundtrack structure
+      if (!soundtrackData.tracks || !Array.isArray(soundtrackData.tracks)) {
+        return { success: false, error: 'Invalid soundtrack format: missing tracks array' };
+      }
+
+      // Ensure options object exists
+      if (!soundtrackData.options) {
+        soundtrackData.options = {
+          randomOnNoMatch: false
+        };
+      }
+
+      // Write to file
+      const success = writeFile(currentFile, JSON.stringify(soundtrackData, null, '\t'));
+      if (!success) {
+        return { success: false, error: 'Failed to write file' };
+      }
+
+      // Update in-memory soundtrack
+      soundtrack = soundtrackData;
+
+      // Reload to ensure consistency
+      loadSoundtrack(currentFile);
+
+      return { success: true, file: currentFile };
+    } catch (err) {
+      console.error('Error saving soundtrack:', err);
+      return { success: false, error: err.message || 'Unknown error' };
+    }
+  });
+
+  // IPC handler for saving soundtrack to new file
+  ipcMain.handle('saveSoundtrackAs', (event, soundtrackData, filePath) => {
+    try {
+      // Validate soundtrack structure
+      if (!soundtrackData.tracks || !Array.isArray(soundtrackData.tracks)) {
+        return { success: false, error: 'Invalid soundtrack format: missing tracks array' };
+      }
+
+      // Ensure options object exists
+      if (!soundtrackData.options) {
+        soundtrackData.options = {
+          randomOnNoMatch: false
+        };
+      }
+
+      // Ensure file has .soundtrack extension
+      let finalPath = filePath;
+      if (!finalPath.endsWith('.soundtrack')) {
+        finalPath = finalPath + '.soundtrack';
+      }
+
+      // Write to file
+      const success = writeFile(finalPath, JSON.stringify(soundtrackData, null, '\t'));
+      if (!success) {
+        return { success: false, error: 'Failed to write file' };
+      }
+
+      // Update settings and load new soundtrack
+      settings.setSync('soundtrack', finalPath);
+      soundtrack = soundtrackData;
+      loadSoundtrack(finalPath);
+
+      // Broadcast state update
+      broadcastStateUpdate();
+
+      return { success: true, file: finalPath };
+    } catch (err) {
+      console.error('Error saving soundtrack as:', err);
+      return { success: false, error: err.message || 'Unknown error' };
+    }
+  });
 }
 
 module.exports = {

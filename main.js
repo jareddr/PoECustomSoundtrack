@@ -222,6 +222,26 @@ function setupIpcHandlers() {
   ipcMain.handle('get-app-path', () => {
     return app.getAppPath();
   });
+
+  // IPC handler for save file dialog
+  ipcMain.handle('save-file-dialog', async (event, options) => {
+    const window = mainWindow || BrowserWindow.getAllWindows()[0];
+    try {
+      const result = await dialog.showSaveDialog(window, {
+        title: 'Save Soundtrack',
+        defaultPath: app.getAppPath(),
+        filters: [{
+          name: 'Custom Soundtrack',
+          extensions: ['soundtrack'],
+        }],
+        ...options,
+      });
+      return result;
+    } catch (error) {
+      console.error('Error opening save file dialog:', error);
+      return { canceled: true };
+    }
+  });
 }
 
 /**

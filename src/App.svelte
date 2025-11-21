@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import SoundtrackEditor from './SoundtrackEditor.svelte';
   
   const { ipcRenderer } = require('electron');
   
@@ -15,6 +16,7 @@
   let ignoreUpdate = false;
   let isPlaying = false;
   let showSettings = false;
+  let showEditor = false;
   let currentZoneName = '';
   let currentTrackName = '';
   let hasCheckedInitialState = false;
@@ -171,6 +173,19 @@
   function closeSettings() {
     showSettings = false;
   }
+
+  function openEditor() {
+    showEditor = true;
+  }
+
+  function closeEditor() {
+    showEditor = false;
+  }
+
+  function handleEditorSave() {
+    // Reload soundtrack after save
+    ipcRenderer.send('updateState');
+  }
   
   let trackScrollAmount = 0;
   let trackTextElement = null;
@@ -297,6 +312,14 @@
           >
             {soundtrackName}
           </button>
+          <button
+            type="button"
+            class="d2button btn-secondary"
+            on:click={openEditor}
+            title="Edit Soundtrack"
+          >
+            Edit
+          </button>
         </div>
       </div>
     </div>
@@ -317,7 +340,7 @@
           bind:this={trackNameElement}
         >
           <span 
-            class="inline-block {shouldScrollTrack ? 'scrolling-text text-red-500' : ''}"
+            class="inline-block {shouldScrollTrack ? 'scrolling-text' : ''}"
             bind:this={trackTextElement}
             style={shouldScrollTrack && trackScrollAmount > 0 ? `--scroll-amount: ${trackScrollAmount}px;` : ''}
           >{currentTrackName}</span>
@@ -465,6 +488,11 @@
           </div>
         </div>
     </div>
+  {/if}
+
+  <!-- Soundtrack Editor Modal -->
+  {#if showEditor}
+    <SoundtrackEditor onClose={closeEditor} onSave={handleEditorSave} />
   {/if}
 </div>
 
