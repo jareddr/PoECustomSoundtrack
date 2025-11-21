@@ -19,6 +19,9 @@ let isPoERunning = false;
 
 let soundtrack = defaults.soundtrack;
 
+// Cache for world areas data
+let worldAreas = null;
+
 // State tracking for change detection
 let configFileWatcher = null;
 let poeStatusCheckInterval = null;
@@ -137,23 +140,147 @@ function randomElement(arr) {
 }
 
 /**
+ * Load and cache world areas data from world_areas.json
+ * @returns {boolean} True if loaded successfully, false otherwise
+ */
+function loadWorldAreas() {
+  try {
+    const worldAreasData = readJsonFile('world_areas.json');
+    if (!worldAreasData) {
+      console.warn('Failed to load world_areas.json');
+      return false;
+    }
+    worldAreas = worldAreasData;
+    return true;
+  } catch (err) {
+    console.error('Error loading world_areas.json:', err);
+    return false;
+  }
+}
+
+/**
+ * Find a zone in world_areas.json by name (returns first match)
+ * @param {string} areaName - Name of the area/zone
+ * @returns {Object|null} Zone data object or null if not found
+ */
+function findZoneByName(areaName) {
+  if (!worldAreas) {
+    return null;
+  }
+
+  // Search through all entries to find first match by name
+  for (const zoneId in worldAreas) {
+    const zone = worldAreas[zoneId];
+    if (zone && zone.name === areaName) {
+      return zone;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a track matches a zone based on match criteria
+ * @param {Object} track - Track object with matches array
+ * @param {Object} zone - Zone data from world_areas.json
+ * @returns {boolean} True if track matches zone
+ */
+function trackMatchesZone(track, zone) {
+  if (!track.matches || !Array.isArray(track.matches)) {
+    return false;
+  }
+
+  for (const match of track.matches) {
+    // Match by name
+    if (match.name && zone.name === match.name) {
+      return true;
+    }
+
+    // Match by tag
+    if (match.tag && Array.isArray(zone.tags) && zone.tags.includes(match.tag)) {
+      return true;
+    }
+
+    // Match by area_type_tag
+    if (match.area_type_tag && Array.isArray(zone.area_type_tags) && zone.area_type_tags.includes(match.area_type_tag)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Get a track for the given area name
  * @param {string} areaName - Name of the area/zone
  * @returns {Object|false} Track object or false if no track found
  */
 function getTrack(areaName) {
-  const trackName = soundtrack.map[areaName];
-  if (!trackName) {
+  // First, try to match by name directly (for special cases like login, bosses, etc.)
+  // This works even if the zone isn't in world_areas.json
+  const nameMatchTracks = soundtrack.tracks.filter((track) => {
+    if (!track.matches || !Array.isArray(track.matches)) {
+      return false;
+    }
+    return track.matches.some((match) => match.name === areaName);
+  });
+
+  if (nameMatchTracks.length > 0) {
+    const trackData = randomElement(nameMatchTracks);
+    return trackData ? generateTrack(trackData) : false;
+  }
+
+  // Look up zone in world_areas.json for tag/area_type_tag matching
+  const zone = findZoneByName(areaName);
+  if (!zone) {
+    // Zone not found in world_areas.json and no name match
+    // If random fallback is enabled, return random track
+    if (soundtrack.options && soundtrack.options.randomOnNoMatch) {
+      const trackData = randomElement(soundtrack.tracks);
+      return trackData ? generateTrack(trackData) : false;
+    }
     return false;
   }
 
-  // If track name is 'random', choose a random track from the entire track list
-  // Otherwise filter the list of tracks by matching names and randomly choose one
-  const tracksToChooseFrom = trackName === 'random'
-    ? soundtrack.tracks
-    : soundtrack.tracks.filter((t) => t.name === trackName);
+  // Find all tracks that match this zone by tags or area_type_tags
+  // (name matching was already handled above)
+  const matchingTracks = soundtrack.tracks.filter((track) => {
+    if (!track.matches || !Array.isArray(track.matches)) {
+      return false;
+    }
 
-  const trackData = randomElement(tracksToChooseFrom);
+    for (const match of track.matches) {
+      // Skip name matches (already handled above)
+      if (match.name) {
+        continue;
+      }
+
+      // Match by tag
+      if (match.tag && Array.isArray(zone.tags) && zone.tags.includes(match.tag)) {
+        return true;
+      }
+
+      // Match by area_type_tag
+      if (match.area_type_tag && Array.isArray(zone.area_type_tags) && zone.area_type_tags.includes(match.area_type_tag)) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  if (matchingTracks.length === 0) {
+    // No matches found
+    // If random fallback is enabled, return random track
+    if (soundtrack.options && soundtrack.options.randomOnNoMatch) {
+      const trackData = randomElement(soundtrack.tracks);
+      return trackData ? generateTrack(trackData) : false;
+    }
+    return false;
+  }
+
+  // Multiple matches - pick one at random
+  const trackData = randomElement(matchingTracks);
   if (!trackData) {
     return false;
   }
@@ -561,6 +688,35 @@ function loadSoundtrack(file) {
   if (!newSoundtrack) {
     return false;
   }
+
+  // Validate new format structure
+  if (!newSoundtrack.tracks || !Array.isArray(newSoundtrack.tracks)) {
+    console.error('Invalid soundtrack format: missing or invalid tracks array');
+    if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      try {
+        mainWindow.webContents.send('errorMessage', `Invalid soundtrack format: missing tracks array`);
+      } catch (sendErr) {
+        console.error('Error sending errorMessage:', sendErr);
+      }
+    }
+    return false;
+  }
+
+  // Validate that tracks have matches array (new format)
+  const hasMatches = newSoundtrack.tracks.some((track) => track.matches && Array.isArray(track.matches));
+  if (!hasMatches && !newSoundtrack.map) {
+    console.warn('Soundtrack file may be missing matches arrays in tracks');
+  }
+
+  // Ensure options object exists with defaults
+  if (!newSoundtrack.options) {
+    newSoundtrack.options = {
+      randomOnNoMatch: false
+    };
+  } else if (typeof newSoundtrack.options.randomOnNoMatch !== 'boolean') {
+    newSoundtrack.options.randomOnNoMatch = false;
+  }
+
   soundtrack = newSoundtrack;
   return true;
 }
@@ -682,6 +838,7 @@ function run(browserWindow) {
   mainWindow = browserWindow;
 
   setDefaults();
+  loadWorldAreas();
   loadSoundtrack(settings.getSync('soundtrack'));
   startWatchingLog();
   
