@@ -20,6 +20,7 @@
   let hasCheckedInitialState = false;
   
   let playerController = null;
+  let isUpdatingFromIPC = false;
   
   // Initialize player controller
   onMount(() => {
@@ -86,10 +87,19 @@
     }
     
     const oldVolume = playerVolume;
-    playerVolume = data.playerVolume ? parseInt(data.playerVolume) : 25;
+    const newVolume = data.playerVolume ? parseInt(data.playerVolume) : 25;
     
-    if (oldVolume !== playerVolume) {
-      handleVolumeChange(playerVolume);
+    if (oldVolume !== newVolume) {
+      // Update volume from IPC without triggering another IPC round-trip
+      isUpdatingFromIPC = true;
+      playerVolume = newVolume;
+      // Update player volume directly without sending IPC
+      if (playerController) {
+        playerController.setVolume(newVolume);
+      }
+      isUpdatingFromIPC = false;
+    } else {
+      playerVolume = newVolume;
     }
     
     if (!data.isPoERunning && isPlaying) {
@@ -122,12 +132,24 @@
     }
   }
   
-  function handleVolumeChange(volume) {
+  // Update volume immediately for smooth dragging (local only, no IPC)
+  function updateVolumeImmediate(volume) {
     const vol = typeof volume === 'string' ? parseInt(volume) : volume;
     if (playerController) {
       playerController.setVolume(vol);
     }
-    ipcRenderer.send('setPlayerVolume', vol.toString());
+    playerVolume = vol;
+  }
+  
+  // Handle volume change and persist via IPC
+  function handleVolumeChange(volume, skipIPC = false) {
+    const vol = typeof volume === 'string' ? parseInt(volume) : volume;
+    if (playerController) {
+      playerController.setVolume(vol);
+    }
+    if (!skipIPC) {
+      ipcRenderer.send('setPlayerVolume', vol.toString());
+    }
     playerVolume = vol;
   }
   
@@ -224,7 +246,8 @@
         max="100" 
         step="1" 
         bind:value={playerVolume}
-        on:input={(e) => handleVolumeChange(e.target.value)}
+        on:input={(e) => updateVolumeImmediate(e.target.value)}
+        on:change={(e) => handleVolumeChange(e.target.value)}
         class="w-[200px] h-2 rounded-lg bg-gray-300 outline-none appearance-none cursor-pointer
                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 
                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-green-500 [&::-webkit-slider-thumb]:cursor-pointer"
