@@ -16,6 +16,25 @@ export default {
         'd2-primary': '#0ba5a5',
         'd2-secondary': '#d82f2f',
         'd2-update-bg': 'rgba(70, 150, 150, 0.9)',
+        // New color scheme for modals/overlays/settings/track forms
+        'primary': {
+          100: '#FF6B6B',
+          200: '#dd4d51',
+          300: '#8f001a',
+        },
+        'accent': {
+          100: '#00FFFF',
+          200: '#00999b',
+        },
+        'text': {
+          100: '#FFFFFF',
+          200: '#e0e0e0',
+        },
+        'bg': {
+          100: '#0F0F0F',
+          200: '#1f1f1f',
+          300: '#353535',
+        },
       },
       borderRadius: {
         'd2': '4px',

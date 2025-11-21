@@ -14,7 +14,7 @@
 
 @layer components {
   .d2button {
-    @apply bg-d2-button rounded-d2 border-2 border-d2-button-border inline-block cursor-pointer text-d2-text-dark text-xs font-bold py-0.5 px-1 mt-1.5 no-underline;
+    @apply bg-d2-button rounded-d2 border-2 border-d2-button-border inline-block cursor-pointer text-d2-text-dark text-xs font-bold py-0.5 px-1 mt-1.5 no-underline font-sans;
   }
   
   .d2button:hover {

@@ -278,7 +278,7 @@
 </script>
 
 <div 
-  class="h-screen overflow-hidden font-exocet font-bold text-d2-text relative"
+  class="h-screen overflow-hidden font-sans text-d2-text relative"
   style="background-image: url(/piety.png); background-size: cover;"
 >
   <!-- Settings Cog Icon -->
@@ -295,7 +295,7 @@
     <!-- Soundtrack Selection at Top -->
     <div class="px-4 py-3">
       <div class="mb-1">
-        <div class="text-lg mb-1">Select Soundtrack</div>
+        <div class="text-lg mb-1 font-exocet font-bold">Select Soundtrack</div>
         <div class="flex items-center gap-2">
           <button type="button" class="d2button" on:click={loadSoundtrackFile}>...</button>
           <button
@@ -320,14 +320,14 @@
 
     <!-- Zone and Track Info -->
     <div class="px-4 flex flex-col gap-2">
-      <div class="text-xl">Current Area</div>
+      <div class="text-xl font-exocet font-bold">Current Area</div>
       {#if currentZoneName}
         <div class="text-base font-bold">{currentZoneName}</div>
       {:else}
         <div class="text-base font-bold text-d2-text/60">No zone detected</div>
       {/if}
       
-      <div class="text-xl">Now Playing</div>
+      <div class="text-xl font-exocet font-bold">Now Playing</div>
       {#if currentTrackName}
         <div 
           class="text-base font-bold overflow-hidden whitespace-nowrap {shouldScrollTrack ? 'scrolling-track' : ''}"
@@ -392,47 +392,47 @@
   {#if showSettings}
     <!-- Fullscreen Modal -->
     <div 
-      class="fixed inset-0 z-50 bg-d2-button border-4 border-d2-button-border p-6 overflow-y-auto"
+      class="fixed inset-0 z-50 bg-bg-100 border-4 border-primary-200 p-6 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-title"
     >
         <!-- Modal Header -->
         <div class="flex items-center justify-between mb-4">
-          <h2 id="settings-title" class="text-2xl font-bold">Settings</h2>
+          <h2 id="settings-title" class="text-2xl font-exocet font-bold text-text-100">Settings</h2>
           <button
             on:click={closeSettings}
-            class="p-1 hover:bg-d2-button-hover rounded transition-colors"
+            class="p-1 hover:bg-bg-300 rounded transition-colors"
             title="Close"
           >
-            <i class="material-icons text-d2-text">close</i>
+            <i class="material-icons text-text-100">close</i>
           </button>
         </div>
 
         <!-- Settings Content -->
         <div class="space-y-4">
           <!-- Path of Exile Directory Selection -->
-          <div>
+          <div class="bg-bg-200 p-4 rounded border border-bg-300">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-lg">Select Path of Exile Directory</span>
+              <span class="text-lg text-text-100">Select Path of Exile Directory</span>
               <i 
-                class="material-icons text-green-500 {poePathValid ? 'inline' : 'hidden'}" 
+                class="material-icons text-accent-100 {poePathValid ? 'inline' : 'hidden'}" 
                 title="Path of Exile Detected!"
               >
                 check_circle
               </i>
               <i 
-                class="material-icons text-red-500 cursor-pointer {!poePathValid ? 'inline' : 'hidden'}" 
+                class="material-icons text-primary-100 cursor-pointer {!poePathValid ? 'inline' : 'hidden'}" 
                 title="Cannot locate path of exile client log."
               >
                 error
               </i>
             </div>
             <div class="flex items-center gap-2">
-              <button type="button" class="d2button" on:click={loadLogFile}>...</button>
+              <button type="button" class="d2button bg-primary-200 hover:bg-primary-100 text-text-100 border-primary-300" on:click={loadLogFile}>...</button>
               <button
                 type="button"
-                class="text-sm flex-1 truncate cursor-pointer hover:text-d2-text-hover px-2 py-1 text-left"
+                class="text-sm flex-1 truncate cursor-pointer hover:text-text-200 px-2 py-1 text-left text-text-200"
                 on:click={loadLogFile}
                 title={poePath}
               >
@@ -442,43 +442,43 @@
           </div>
 
           <!-- Music Volume Check -->
-          <div>
+          <div class="bg-bg-200 p-4 rounded border border-bg-300">
             <div class="flex items-center justify-between">
-              <span class="text-lg">Turn off in game music</span>
+              <span class="text-lg text-text-100">Turn off in game music</span>
               <i 
-                class="material-icons text-green-500 {volumeValid ? 'inline' : 'hidden'}" 
+                class="material-icons text-accent-100 {volumeValid ? 'inline' : 'hidden'}" 
                 title="Checks out."
               >
                 check_circle
               </i>
               <i 
-                class="material-icons text-orange-500 cursor-pointer {!volumeValid ? 'inline' : 'hidden'}" 
+                class="material-icons text-primary-100 cursor-pointer {!volumeValid ? 'inline' : 'hidden'}" 
                 title="Set the music volume in game to 0 to avoid clashing tracks."
               >
                 warning
               </i>
             </div>
-            <p class="text-sm text-d2-text/80 mt-1">Set the music volume in game to 0 to avoid clashing tracks.</p>
+            <p class="text-sm text-text-200 mt-1">Set the music volume in game to 0 to avoid clashing tracks.</p>
           </div>
 
           <!-- Character Event Voices Check -->
-          <div>
+          <div class="bg-bg-200 p-4 rounded border border-bg-300">
             <div class="flex items-center justify-between">
-              <span class="text-lg">Enable gameplay event voices</span>
+              <span class="text-lg text-text-100">Enable gameplay event voices</span>
               <i 
-                class="material-icons text-green-500 {charEventValid ? 'inline' : 'hidden'}" 
+                class="material-icons text-accent-100 {charEventValid ? 'inline' : 'hidden'}" 
                 title="Checks out."
               >
                 check_circle
               </i>
               <i 
-                class="material-icons text-orange-500 cursor-pointer {!charEventValid ? 'inline' : 'hidden'}" 
+                class="material-icons text-primary-100 cursor-pointer {!charEventValid ? 'inline' : 'hidden'}" 
                 title="Enable gameplay event voices to enable boss music."
               >
                 warning
               </i>
             </div>
-            <p class="text-sm text-d2-text/80 mt-1">Enable gameplay event voices to enable boss music.</p>
+            <p class="text-sm text-text-200 mt-1">Enable gameplay event voices to enable boss music.</p>
           </div>
         </div>
     </div>
