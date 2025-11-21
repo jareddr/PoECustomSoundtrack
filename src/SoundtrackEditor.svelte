@@ -10,6 +10,7 @@
   let soundtrackData = { tracks: [], options: { randomOnNoMatch: false } };
   let editingTrackIndex = null;
   let editingTrack = null;
+  let showAddTrackModal = false;
   let matchSearchType = 'name'; // 'name', 'tag', or 'area_type_tag'
   let autocompleteSuggestions = [];
   let showAutocomplete = false;
@@ -25,10 +26,43 @@
 
   // Match input state
   let matchInputValue = '';
+  let lastFetchedUrl = '';
+  let isAutoFetching = false;
 
   onMount(async () => {
     await loadSoundtrackData();
   });
+
+  // Function to check if a string is a valid YouTube URL
+  function isValidYouTubeUrl(url) {
+    if (!url || !url.trim()) return false;
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
+    return youtubeRegex.test(url.trim());
+  }
+
+  // Reactive statement to auto-fetch YouTube title when URL changes
+  $: if (showAddTrackModal && newTrackUrl && !isAutoFetching) {
+    const url = newTrackUrl.trim();
+    // Only fetch if it's a valid YouTube URL, we haven't fetched this URL yet, and name is empty
+    if (isValidYouTubeUrl(url) && url !== lastFetchedUrl && !newTrackName.trim()) {
+      isAutoFetching = true;
+      lastFetchedUrl = url;
+      getYouTubeTitle(url)
+        .then(title => {
+          if (!newTrackName.trim()) { // Double-check name is still empty
+            newTrackName = title;
+            errorMessage = ''; // Clear any previous errors
+          }
+        })
+        .catch(err => {
+          // Error already handled in getYouTubeTitle, reset lastFetchedUrl so we can retry
+          lastFetchedUrl = '';
+        })
+        .finally(() => {
+          isAutoFetching = false;
+        });
+    }
+  }
 
   async function loadSoundtrackData() {
     try {
@@ -78,15 +112,38 @@
 
       soundtrackData.tracks.push(newTrack);
       
-      // Reset form
+      // Reset form and close modal
       newTrackName = '';
       newTrackUrl = '';
       newTrackMatches = [];
       matchInputValue = '';
       errorMessage = '';
+      showAddTrackModal = false;
     } catch (err) {
       // Error already handled in getYouTubeTitle
     }
+  }
+
+  function openAddTrackModal() {
+    showAddTrackModal = true;
+    newTrackName = '';
+    newTrackUrl = '';
+    newTrackMatches = [];
+    matchInputValue = '';
+    errorMessage = '';
+    lastFetchedUrl = '';
+    isAutoFetching = false;
+  }
+
+  function closeAddTrackModal() {
+    showAddTrackModal = false;
+    newTrackName = '';
+    newTrackUrl = '';
+    newTrackMatches = [];
+    matchInputValue = '';
+    errorMessage = '';
+    lastFetchedUrl = '';
+    isAutoFetching = false;
   }
 
   function startEditTrack(index) {
@@ -128,7 +185,7 @@
 
   function deleteTrack(index) {
     if (confirm('Are you sure you want to delete this track?')) {
-      soundtrackData.tracks.splice(index, 1);
+      soundtrackData.tracks = soundtrackData.tracks.filter((_, i) => i !== index);
       if (editingTrackIndex === index) {
         cancelEditTrack();
       } else if (editingTrackIndex > index) {
@@ -171,9 +228,9 @@
 
     if (!isDuplicate) {
       if (editingTrackIndex !== null) {
-        editingTrack.matches.push(matchObj);
-      } else {
-        newTrackMatches.push(matchObj);
+        editingTrack.matches = [...editingTrack.matches, matchObj];
+      } else if (showAddTrackModal) {
+        newTrackMatches = [...newTrackMatches, matchObj];
       }
     }
 
@@ -184,9 +241,11 @@
 
   function removeMatch(trackIndex, matchIndex) {
     if (trackIndex === editingTrackIndex && editingTrack) {
-      editingTrack.matches.splice(matchIndex, 1);
+      editingTrack.matches = editingTrack.matches.filter((_, i) => i !== matchIndex);
     } else {
-      soundtrackData.tracks[trackIndex].matches.splice(matchIndex, 1);
+      soundtrackData.tracks[trackIndex].matches = soundtrackData.tracks[trackIndex].matches.filter((_, i) => i !== matchIndex);
+      // Trigger reactivity by reassigning the tracks array
+      soundtrackData.tracks = [...soundtrackData.tracks];
     }
   }
 
@@ -255,13 +314,12 @@
 <svelte:window on:click={handleClickOutside} />
 
 <div 
-  class="fixed inset-0 z-50 bg-d2-button border-4 border-d2-button-border p-6 overflow-y-auto"
-  role="dialog"
-  aria-modal="true"
+  class="h-screen flex flex-col bg-d2-button p-6 font-exocet font-bold text-d2-text overflow-hidden"
+  role="main"
   aria-labelledby="editor-title"
 >
-  <!-- Modal Header -->
-  <div class="flex items-center justify-between mb-4">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4 flex-shrink-0">
     <h2 id="editor-title" class="text-2xl font-bold">Edit Soundtrack</h2>
     <button
       on:click={onClose}
@@ -273,162 +331,219 @@
   </div>
 
   {#if errorMessage}
-    <div class="mb-4 p-2 bg-red-900/50 border border-red-500 text-red-200 text-sm">
+    <div class="mb-4 p-2 bg-red-900/50 border border-red-500 text-red-200 text-sm flex-shrink-0">
       {errorMessage}
     </div>
   {/if}
 
   <!-- Tracks List -->
-  <div class="mb-6">
-    <h3 class="text-xl font-bold mb-2">Tracks ({soundtrackData.tracks.length})</h3>
-    <div class="space-y-2 max-h-64 overflow-y-auto">
+  <div class="flex-1 flex flex-col min-h-0 mb-4">
+    <div class="flex items-center justify-between mb-2 flex-shrink-0">
+      <h3 class="text-xl font-bold">Tracks ({soundtrackData.tracks.length})</h3>
+      <button
+        on:click={openAddTrackModal}
+        class="d2button btn-primary"
+        disabled={editingTrackIndex !== null || showAddTrackModal}
+      >
+        Add Track
+      </button>
+    </div>
+    <div class="flex-1 overflow-y-auto overflow-x-hidden space-y-2">
       {#each soundtrackData.tracks as track, index}
-        <div class="bg-d2-button-hover/50 p-3 rounded border border-d2-button-border">
-          <div class="flex items-start justify-between mb-2">
-            <div class="flex-1">
-              <div class="font-bold text-base">{track.name}</div>
+        <div class="bg-d2-button-hover/50 rounded border border-d2-button-border min-w-0">
+          <!-- Track Header (always visible) -->
+          <div class="p-3">
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-base truncate" title={track.name}>{track.name}</div>
               <div class="text-sm text-d2-text/80 truncate" title={track.location}>{track.location}</div>
               <div class="text-xs text-d2-text/60 mt-1">
                 {track.matches.length} match{track.matches.length !== 1 ? 'es' : ''}
               </div>
             </div>
-            <div class="flex gap-2 ml-2">
+          </div>
+
+          <!-- Edit Form (expanded when editing) -->
+          {#if editingTrackIndex === index && editingTrack}
+            <div class="px-3 pb-3 pt-0 space-y-3 border-t border-d2-button-border mt-2">
+              <div>
+                <label for="edit-track-name-{index}" class="block text-sm mb-1">Track Name</label>
+                <input
+                  id="edit-track-name-{index}"
+                  type="text"
+                  bind:value={editingTrack.name}
+                  class="w-full bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text"
+                  placeholder="Track name"
+                />
+              </div>
+              <div>
+                <label for="edit-track-url-{index}" class="block text-sm mb-1">YouTube URL</label>
+                <input
+                  id="edit-track-url-{index}"
+                  type="text"
+                  bind:value={editingTrack.location}
+                  class="w-full bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+              </div>
+              <div>
+                <label for="edit-track-matches-{index}" class="block text-sm mb-1">Matches Area</label>
+                <div class="space-y-2">
+                  {#each editingTrack.matches as match, matchIndex}
+                    <div class="flex items-center justify-between bg-d2-button p-2 rounded">
+                      <span class="text-sm">{getMatchDisplay(match)}</span>
+                      <button
+                        on:click={() => removeMatch(editingTrackIndex, matchIndex)}
+                        class="text-red-400 hover:text-red-300 text-sm"
+                        title="Remove match"
+                      >
+                        <i class="material-icons text-base">delete</i>
+                      </button>
+                    </div>
+                  {/each}
+                  <!-- Match Input for Editing -->
+                  <div id="edit-track-matches-{index}" class="autocomplete-container relative">
+                    <div class="flex gap-2 mb-2">
+                      <select
+                        bind:value={matchSearchType}
+                        class="bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text text-sm"
+                      >
+                        <option value="name">Name</option>
+                        <option value="tag">Tag</option>
+                        <option value="area_type_tag">Area Type</option>
+                      </select>
+                      <input
+                        type="text"
+                        bind:value={matchInputValue}
+                        on:input={(e) => handleMatchInputChange(e.target.value)}
+                        on:keydown={(e) => {
+                          if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
+                            selectAutocompleteSuggestion(autocompleteSuggestions[0]);
+                          }
+                        }}
+                        class="flex-1 bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text"
+                        placeholder="Search and add match..."
+                      />
+                    </div>
+                    {#if showAutocomplete && autocompleteSuggestions.length > 0}
+                      <div class="absolute z-10 w-full bg-d2-button border border-d2-button-border max-h-48 overflow-y-auto">
+                        {#each autocompleteSuggestions as suggestion}
+                          <button
+                            on:click={() => selectAutocompleteSuggestion(suggestion)}
+                            class="w-full text-left px-2 py-1 hover:bg-d2-button-hover text-sm"
+                          >
+                            {suggestion.value}
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Action Buttons (bottom right) -->
+          <div class="px-3 pb-3 pt-2 flex justify-end gap-2 border-t border-d2-button-border">
+            {#if editingTrackIndex === index}
+              <button
+                on:click={saveEditTrack}
+                class="d2button btn-primary text-xs"
+                disabled={loadingYouTube || saving}
+              >
+                Save
+              </button>
+              <button
+                on:click={cancelEditTrack}
+                class="d2button btn-secondary text-xs"
+                disabled={loadingYouTube || saving}
+              >
+                Cancel
+              </button>
+            {:else}
               <button
                 on:click={() => startEditTrack(index)}
                 class="d2button btn-secondary text-xs"
-                disabled={editingTrackIndex !== null && editingTrackIndex !== index}
+                disabled={editingTrackIndex !== null}
               >
                 Edit
               </button>
               <button
                 on:click={() => deleteTrack(index)}
                 class="d2button text-xs"
-                disabled={editingTrackIndex === index}
+                disabled={editingTrackIndex !== null}
               >
                 Delete
               </button>
-            </div>
+            {/if}
           </div>
         </div>
       {:else}
-        <div class="text-d2-text/60 text-center py-4">No tracks yet. Add one below.</div>
+        <div class="text-d2-text/60 text-center py-4">No tracks yet. Click "Add Track" to get started.</div>
       {/each}
     </div>
   </div>
 
-  <!-- Add/Edit Track Form -->
-  <div class="mb-6">
-    <h3 class="text-xl font-bold mb-2">
-      {editingTrackIndex !== null ? 'Edit Track' : 'Add New Track'}
-    </h3>
-    
-    {#if editingTrackIndex !== null}
-      <!-- Edit Track -->
-      <div class="space-y-3 bg-d2-button-hover/30 p-4 rounded border border-d2-button-border">
-        <div>
-          <label class="block text-sm mb-1">Track Name</label>
-          <input
-            type="text"
-            bind:value={editingTrack.name}
-            class="w-full bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text"
-            placeholder="Track name"
-          />
-        </div>
-        <div>
-          <label class="block text-sm mb-1">YouTube URL</label>
-          <input
-            type="text"
-            bind:value={editingTrack.location}
-            class="w-full bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text"
-            placeholder="https://www.youtube.com/watch?v=..."
-          />
-        </div>
-        <div>
-          <label class="block text-sm mb-1">Matches</label>
-          <div class="space-y-2">
-            {#each editingTrack.matches as match, matchIndex}
-              <div class="flex items-center justify-between bg-d2-button p-2 rounded">
-                <span class="text-sm">{getMatchDisplay(match)}</span>
-                <button
-                  on:click={() => removeMatch(editingTrackIndex, matchIndex)}
-                  class="text-red-400 hover:text-red-300 text-sm"
-                  title="Remove match"
-                >
-                  <i class="material-icons text-base">delete</i>
-                </button>
-              </div>
-            {/each}
-            <!-- Match Input for Editing -->
-            <div class="autocomplete-container relative">
-              <div class="flex gap-2 mb-2">
-                <select
-                  bind:value={matchSearchType}
-                  class="bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text text-sm"
-                >
-                  <option value="name">Name</option>
-                  <option value="tag">Tag</option>
-                  <option value="area_type_tag">Area Type</option>
-                </select>
-                <input
-                  type="text"
-                  bind:value={matchInputValue}
-                  on:input={(e) => handleMatchInputChange(e.target.value)}
-                  on:keydown={(e) => {
-                    if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
-                      selectAutocompleteSuggestion(autocompleteSuggestions[0]);
-                    }
-                  }}
-                  class="flex-1 bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text"
-                  placeholder="Search and add match..."
-                />
-              </div>
-              {#if showAutocomplete && autocompleteSuggestions.length > 0}
-                <div class="absolute z-10 w-full bg-d2-button border border-d2-button-border max-h-48 overflow-y-auto">
-                  {#each autocompleteSuggestions as suggestion}
-                    <button
-                      on:click={() => selectAutocompleteSuggestion(suggestion)}
-                      class="w-full text-left px-2 py-1 hover:bg-d2-button-hover text-sm"
-                    >
-                      {suggestion.value}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <button
-            on:click={saveEditTrack}
-            class="d2button btn-primary"
-            disabled={loadingYouTube || saving}
-          >
-            Save Changes
-          </button>
-          <button
-            on:click={cancelEditTrack}
-            class="d2button btn-secondary"
-            disabled={loadingYouTube || saving}
-          >
-            Cancel
-          </button>
-        </div>
+  <!-- Save Buttons -->
+  <div class="flex gap-2 justify-end flex-shrink-0">
+    <button
+      on:click={saveSoundtrack}
+      class="d2button btn-primary"
+      disabled={saving || editingTrackIndex !== null}
+    >
+      {saving ? 'Saving...' : 'Save'}
+    </button>
+    <button
+      on:click={saveSoundtrackAs}
+      class="d2button btn-secondary"
+      disabled={saving || editingTrackIndex !== null}
+    >
+      {saving ? 'Saving...' : 'Save As'}
+    </button>
+  </div>
+</div>
+
+<!-- Add Track Modal -->
+{#if showAddTrackModal}
+  <div 
+    class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+    on:click={closeAddTrackModal}
+    role="dialog"
+    aria-modal="true"
+  >
+    <div 
+      class="bg-d2-button border-4 border-d2-button-border p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+      on:click|stopPropagation
+    >
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-2xl font-bold">Add New Track</h3>
+        <button
+          on:click={closeAddTrackModal}
+          class="p-1 hover:bg-d2-button-hover rounded transition-colors"
+          title="Close"
+        >
+          <i class="material-icons text-d2-text">close</i>
+        </button>
       </div>
-    {:else}
-      <!-- Add Track -->
-      <div class="space-y-3 bg-d2-button-hover/30 p-4 rounded border border-d2-button-border">
+
+      {#if errorMessage}
+        <div class="mb-4 p-2 bg-red-900/50 border border-red-500 text-red-200 text-sm">
+          {errorMessage}
+        </div>
+      {/if}
+
+      <div class="space-y-3">
         <div>
-          <label class="block text-sm mb-1">YouTube URL {#if loadingYouTube}(Loading...){/if}</label>
+          <label class="block text-sm mb-1">YouTube URL {#if loadingYouTube || isAutoFetching}(Loading...){/if}</label>
           <input
             type="text"
             bind:value={newTrackUrl}
             class="w-full bg-d2-button border border-d2-button-border px-2 py-1 text-d2-text"
             placeholder="https://www.youtube.com/watch?v=..."
-            disabled={loadingYouTube}
+            disabled={loadingYouTube || isAutoFetching}
           />
         </div>
         <div>
-          <label class="block text-sm mb-1">Track Name (optional, will use YouTube title if empty)</label>
+          <label class="block text-sm mb-1">Track Name</label>
           <input
             type="text"
             bind:value={newTrackName}
@@ -438,13 +553,13 @@
           />
         </div>
         <div>
-          <label class="block text-sm mb-1">Matches</label>
+          <label class="block text-sm mb-1">Matches Area</label>
           <div class="space-y-2">
             {#each newTrackMatches as match, matchIndex}
-              <div class="flex items-center justify-between bg-d2-button p-2 rounded">
+              <div class="flex items-center justify-between bg-d2-button-hover/50 p-2 rounded">
                 <span class="text-sm">{getMatchDisplay(match)}</span>
                 <button
-                  on:click={() => newTrackMatches.splice(matchIndex, 1)}
+                  on:click={() => newTrackMatches = newTrackMatches.filter((_, i) => i !== matchIndex)}
                   class="text-red-400 hover:text-red-300 text-sm"
                   title="Remove match"
                 >
@@ -491,37 +606,43 @@
             </div>
           </div>
         </div>
-        <button
-          on:click={addTrack}
-          class="d2button btn-primary"
-          disabled={loadingYouTube || saving || !newTrackUrl.trim()}
-        >
-          Add Track
-        </button>
+        <div class="flex gap-2 justify-end">
+          <button
+            on:click={closeAddTrackModal}
+            class="d2button btn-secondary"
+            disabled={loadingYouTube || saving}
+          >
+            Cancel
+          </button>
+          <button
+            on:click={addTrack}
+            class="d2button btn-primary"
+            disabled={loadingYouTube || saving || !newTrackUrl.trim()}
+          >
+            Add Track
+          </button>
+        </div>
       </div>
-    {/if}
+    </div>
   </div>
-
-  <!-- Save Buttons -->
-  <div class="flex gap-2 justify-end">
-    <button
-      on:click={saveSoundtrack}
-      class="d2button btn-primary"
-      disabled={saving || editingTrackIndex !== null}
-    >
-      {saving ? 'Saving...' : 'Save'}
-    </button>
-    <button
-      on:click={saveSoundtrackAs}
-      class="d2button btn-secondary"
-      disabled={saving || editingTrackIndex !== null}
-    >
-      {saving ? 'Saving...' : 'Save As'}
-    </button>
-  </div>
-</div>
+{/if}
 
 <style>
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  :global(html) {
+    height: 100%;
+  }
+
+  :global(#app) {
+    height: 100%;
+  }
+
   .autocomplete-container {
     position: relative;
   }

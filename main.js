@@ -22,6 +22,7 @@ const { app, BrowserWindow, ipcMain } = electron;
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow = null;
+let editorWindow = null;
 let localServer = null;
 let serverPort = null;
 
@@ -179,6 +180,53 @@ function createWindow() {
 }
 
 /**
+ * Create the editor window
+ */
+function createEditorWindow() {
+  // Don't create multiple editor windows
+  if (editorWindow) {
+    editorWindow.focus();
+    return;
+  }
+
+  // Create the editor window
+  editorWindow = new BrowserWindow({
+    width: 900,
+    height: 700,
+    resizable: true,
+    minimizable: true,
+    maximizable: true,
+    title: `Edit Soundtrack - PoE Custom Soundtrack v${version}`,
+    icon: './pietyd2.ico',
+    webPreferences: {
+      nodeIntegration: true,
+      nodeIntegrationInWorker: true,
+      contextIsolation: false,
+    },
+  });
+
+  editorWindow.setMenu(null);
+
+  // Load the editor - use Vite dev server in development, built files in production
+  if (isDevelopment) {
+    editorWindow.loadURL(`${VITE_DEV_SERVER_URL}/editor.html`);
+  } else {
+    editorWindow.loadURL(`http://${constants.SERVER.HOST}:${serverPort}/editor.html`);
+  }
+
+  // Open the DevTools in development
+  if (isDevelopment) {
+    editorWindow.webContents.openDevTools();
+  }
+
+  // Emitted when the window is closed
+  editorWindow.on('closed', () => {
+    // Dereference the window object
+    editorWindow = null;
+  });
+}
+
+/**
  * Initialize IPC handlers for dialog operations
  */
 function setupIpcHandlers() {
@@ -225,7 +273,7 @@ function setupIpcHandlers() {
 
   // IPC handler for save file dialog
   ipcMain.handle('save-file-dialog', async (event, options) => {
-    const window = mainWindow || BrowserWindow.getAllWindows()[0];
+    const window = editorWindow || mainWindow || BrowserWindow.getAllWindows()[0];
     try {
       const result = await dialog.showSaveDialog(window, {
         title: 'Save Soundtrack',
@@ -241,6 +289,28 @@ function setupIpcHandlers() {
       console.error('Error opening save file dialog:', error);
       return { canceled: true };
     }
+  });
+
+  // IPC handler for opening editor window
+  ipcMain.handle('open-editor-window', () => {
+    createEditorWindow();
+    return { success: true };
+  });
+
+  // IPC handler for soundtrack saved event (from editor window)
+  ipcMain.on('soundtrack-saved', () => {
+    // Notify main window to refresh
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updateState');
+    }
+  });
+
+  // IPC handler for closing editor window
+  ipcMain.handle('close-editor-window', () => {
+    if (editorWindow && !editorWindow.isDestroyed()) {
+      editorWindow.close();
+    }
+    return { success: true };
   });
 }
 

@@ -1,6 +1,5 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import SoundtrackEditor from './SoundtrackEditor.svelte';
   
   const { ipcRenderer } = require('electron');
   
@@ -16,7 +15,6 @@
   let ignoreUpdate = false;
   let isPlaying = false;
   let showSettings = false;
-  let showEditor = false;
   let currentZoneName = '';
   let currentTrackName = '';
   let hasCheckedInitialState = false;
@@ -174,17 +172,13 @@
     showSettings = false;
   }
 
-  function openEditor() {
-    showEditor = true;
-  }
-
-  function closeEditor() {
-    showEditor = false;
-  }
-
-  function handleEditorSave() {
-    // Reload soundtrack after save
-    ipcRenderer.send('updateState');
+  async function openEditor() {
+    try {
+      await ipcRenderer.invoke('open-editor-window');
+    } catch (err) {
+      console.error('Error opening editor window:', err);
+      alert('Failed to open editor window');
+    }
   }
   
   let trackScrollAmount = 0;
@@ -488,11 +482,6 @@
           </div>
         </div>
     </div>
-  {/if}
-
-  <!-- Soundtrack Editor Modal -->
-  {#if showEditor}
-    <SoundtrackEditor onClose={closeEditor} onSave={handleEditorSave} />
   {/if}
 </div>
 
