@@ -21,6 +21,8 @@
   
   let playerController = null;
   let isUpdatingFromIPC = false;
+  let trackNameElement = null;
+  let shouldScrollTrack = false;
   
   // Initialize player controller
   onMount(() => {
@@ -170,6 +172,32 @@
     showSettings = false;
   }
   
+  let trackScrollAmount = 0;
+  let trackTextElement = null;
+  
+  function checkTrackNameOverflow() {
+    if (trackNameElement && trackTextElement) {
+      const container = trackNameElement;
+      const textSpan = trackTextElement;
+      const isOverflowing = textSpan.scrollWidth > container.clientWidth;
+      shouldScrollTrack = isOverflowing;
+      if (isOverflowing) {
+        // Calculate how much we need to scroll
+        trackScrollAmount = textSpan.scrollWidth - container.clientWidth;
+        // Set CSS variable for animation
+        container.style.setProperty('--scroll-amount', `${trackScrollAmount}px`);
+      } else {
+        container.style.removeProperty('--scroll-amount');
+      }
+    }
+  }
+  
+  // Check overflow when track name changes or elements are available
+  $: if (currentTrackName && trackNameElement && trackTextElement) {
+    // Use setTimeout to ensure DOM has updated
+    setTimeout(checkTrackNameOverflow, 0);
+  }
+  
   // Handle Escape key to close settings
   let escapeHandler = null;
   $: if (showSettings && !escapeHandler) {
@@ -229,7 +257,15 @@
       
       <div class="text-xl">Now Playing</div>
       {#if currentTrackName}
-        <div class="text-base font-bold overflow-hidden text-ellipsis whitespace-nowrap">{currentTrackName}</div>
+        <div 
+          class="text-base font-bold overflow-hidden whitespace-nowrap {shouldScrollTrack ? 'scrolling-track' : ''}"
+          bind:this={trackNameElement}
+        >
+          <span 
+            class="{shouldScrollTrack ? 'scrolling-text' : ''}"
+            bind:this={trackTextElement}
+          >{currentTrackName}</span>
+        </div>
       {:else}
         <div class="text-base font-bold text-d2-text/60">No track</div>
       {/if}
@@ -375,3 +411,27 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .scrolling-track {
+    position: relative;
+  }
+  
+  .scrolling-text {
+    display: inline-block;
+    animation: scroll-text 10s ease-in-out infinite;
+    padding-right: 1rem; /* Add space at the end for smooth transition */
+  }
+  
+  @keyframes scroll-text {
+    0%, 25% {
+      transform: translateX(0);
+    }
+    50%, 75% {
+      transform: translateX(calc(-1 * var(--scroll-amount, 0px)));
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+</style>
