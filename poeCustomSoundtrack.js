@@ -11,6 +11,7 @@ const bosses = require('./bosses.js');
 let mainWindow = null;
 let currentTrackName = false;
 let currentTrackId = false;
+let currentZoneName = false;
 let fileTailInstance = null;
 let isUpdateAvailable = false;
 let isUpdateDownloading = false;
@@ -33,6 +34,7 @@ let lastState = null;
 function reset() {
   currentTrackName = false;
   currentTrackId = false;
+  currentZoneName = false;
 }
 
 /**
@@ -367,7 +369,18 @@ function parseLogLine(line) {
   if (shouldChangeTrack) {
     currentTrackName = track.name;
     currentTrackId = track.id;
+    // Store the zone name for display (use areaCode, but prefer actual zone name if available)
+    if (areaCode === 'login') {
+      currentZoneName = 'Login Screen';
+    } else if (boss) {
+      currentZoneName = boss;
+    } else {
+      // Use the area name from the log line match
+      currentZoneName = newArea[1] || areaCode;
+    }
     sendTrackChange(track);
+    // Broadcast state update to include new zone name
+    broadcastStateUpdate();
   }
 }
 
@@ -751,6 +764,8 @@ function getState() {
       isUpdateAvailable: Boolean(isUpdateAvailable),
       isUpdateDownloading: Boolean(isUpdateDownloading),
       isPoERunning: Boolean(isPoERunning),
+      currentZoneName: currentZoneName ? String(currentZoneName) : '',
+      currentTrackName: currentTrackName ? String(currentTrackName) : '',
     };
 
     // Verify serializability by attempting to stringify
@@ -770,6 +785,8 @@ function getState() {
       isUpdateAvailable: false,
       isUpdateDownloading: false,
       isPoERunning: false,
+      currentZoneName: '',
+      currentTrackName: '',
     };
   }
 }

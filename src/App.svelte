@@ -14,6 +14,10 @@
   let isUpdateDownloading = false;
   let ignoreUpdate = false;
   let isPlaying = false;
+  let showSettings = false;
+  let currentZoneName = '';
+  let currentTrackName = '';
+  let hasCheckedInitialState = false;
   
   let playerController = null;
   
@@ -32,6 +36,10 @@
       if (playerController) {
         playerController.playTrack(data, 0);
         isPlaying = true;
+        // Capture track name from changeTrack event
+        if (data && data.name) {
+          currentTrackName = data.name;
+        }
       }
     });
     
@@ -69,6 +77,14 @@
     isUpdateAvailable = data.isUpdateAvailable && !ignoreUpdate;
     isUpdateDownloading = data.isUpdateDownloading;
     
+    // Update zone and track names from state
+    if (data.currentZoneName) {
+      currentZoneName = data.currentZoneName;
+    }
+    if (data.currentTrackName) {
+      currentTrackName = data.currentTrackName;
+    }
+    
     const oldVolume = playerVolume;
     playerVolume = data.playerVolume ? parseInt(data.playerVolume) : 25;
     
@@ -80,6 +96,14 @@
       isPlaying = false;
       if (playerController) {
         playerController.fadeout();
+      }
+    }
+    
+    // Auto-open settings on initial load if any checkmarks are not green
+    if (!hasCheckedInitialState) {
+      hasCheckedInitialState = true;
+      if (!poePathValid || !volumeValid || !charEventValid) {
+        showSettings = true;
       }
     }
   }
@@ -115,137 +139,214 @@
     ignoreUpdate = true;
     isUpdateAvailable = false;
   }
+  
+  function toggleSettings() {
+    showSettings = !showSettings;
+  }
+  
+  function closeSettings() {
+    showSettings = false;
+  }
+  
+  // Handle Escape key to close settings
+  let escapeHandler = null;
+  $: if (showSettings && !escapeHandler) {
+    escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeSettings();
+      }
+    };
+    window.addEventListener('keydown', escapeHandler);
+  } else if (!showSettings && escapeHandler) {
+    window.removeEventListener('keydown', escapeHandler);
+    escapeHandler = null;
+  }
 </script>
 
 <div 
-  class="h-screen overflow-hidden font-exocet font-bold text-d2-text text-base"
+  class="h-screen overflow-hidden font-exocet font-bold text-d2-text relative"
   style="background-image: url(/piety.png); background-size: cover;"
 >
-  <!-- Path of Exile Directory Selection -->
-  <div class="px-2 py-1">
-    <div class="flex items-center justify-between text-sm">
-      <span>(1) Select Path of Exile directory</span>
-      <i 
-        class="material-icons text-green-500 {poePathValid ? 'inline' : 'hidden'}" 
-        title="Path of Exile Detected!"
-      >
-        check_circle
-      </i>
-      <i 
-        class="material-icons text-red-500 cursor-pointer {!poePathValid ? 'inline' : 'hidden'}" 
-        title="Cannot locate path of exile client log."
-      >
-        error
-      </i>
-    </div>
-    <div class="flex items-center mt-0.5">
-      <a href="#" class="d2button float-left" on:click|preventDefault={loadLogFile}>...</a>
-      <div 
-        class="text-xs block py-1 px-2 float-left truncate cursor-pointer w-4/5 whitespace-nowrap hover:text-d2-text-hover"
-        on:click={loadLogFile}
-      >
-        {poePath}
-      </div>
-    </div>
-  </div>
-  
-  <div class="mb-1"></div>
-  
-  <!-- Music Volume Check -->
-  <div class="px-2 py-0.5">
-    <div class="flex items-center justify-between text-sm">
-      <span>(11) Turn off in game music</span>
-      <i 
-        class="material-icons text-green-500 {volumeValid ? 'inline' : 'hidden'}" 
-        title="Checks out."
-      >
-        check_circle
-      </i>
-      <i 
-        class="material-icons text-orange-500 cursor-pointer {!volumeValid ? 'inline' : 'hidden'}" 
-        title="Set the music volume in game to 0 to avoid clashing tracks."
-      >
-        warning
-      </i>
-    </div>
-  </div>
-  
-  <div class="mb-1"></div>
-  
-  <!-- Character Event Voices Check -->
-  <div class="px-2 py-0.5">
-    <div class="flex items-center justify-between text-sm">
-      <span>(111) Enable gameplay event voices</span>
-      <i 
-        class="material-icons text-green-500 {charEventValid ? 'inline' : 'hidden'}" 
-        title="Checks out."
-      >
-        check_circle
-      </i>
-      <i 
-        class="material-icons text-orange-500 cursor-pointer {!charEventValid ? 'inline' : 'hidden'}" 
-        title="Enable gameplay event voices to enable boss music."
-      >
-        warning
-      </i>
-    </div>
-  </div>
-  
-  <div class="mb-1"></div>
-  
-  <!-- Soundtrack Selection -->
-  <div class="px-2 py-0.5">
-    <div>
-      <div class="text-sm">(1V) Select soundtrack</div>
-      <div class="flex items-center mt-0.5">
-        <a href="#" class="d2button float-left" on:click|preventDefault={loadSoundtrackFile}>...</a>
-        <div 
-          class="text-xs block py-1 px-2 float-left truncate cursor-pointer w-4/5 whitespace-nowrap hover:text-d2-text-hover"
-          on:click={loadSoundtrackFile}
-        >
-          {soundtrackName}
+  <!-- Settings Cog Icon -->
+  <button
+    on:click={toggleSettings}
+    class="absolute top-2 right-2 z-50 p-2 hover:bg-black/20 rounded transition-colors"
+    title="Settings"
+  >
+    <i class="material-icons text-d2-text text-2xl">settings</i>
+  </button>
+
+  <!-- Main Content -->
+  <div class="flex flex-col h-full">
+    <!-- Soundtrack Selection at Top -->
+    <div class="px-4 py-3">
+      <div class="mb-1">
+        <div class="text-lg mb-1">Select Soundtrack</div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="d2button" on:click={loadSoundtrackFile}>...</button>
+          <button
+            type="button"
+            class="text-sm flex-1 truncate cursor-pointer hover:text-d2-text-hover px-2 py-1 text-left"
+            on:click={loadSoundtrackFile}
+            title={soundtrackName}
+          >
+            {soundtrackName}
+          </button>
         </div>
       </div>
     </div>
-  </div>
-  
-  <!-- Player Containers -->
-  <div id="youtube-parent-container" class="mt-2 h-[220px]"></div>
-  <div id="local-parent-container" class="hidden"></div>
-  
-  <!-- Volume Control -->
-  <div id="volume-control-container" class="flex items-center justify-center gap-2 px-4 py-1">
-    <i class="material-icons align-middle">volume_down</i>
-    <input 
-      type="range" 
-      min="0" 
-      max="100" 
-      step="1" 
-      bind:value={playerVolume}
-      on:input={(e) => handleVolumeChange(e.target.value)}
-      class="w-[200px] h-2 rounded-lg bg-gray-300 outline-none appearance-none cursor-pointer
-             [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 
-             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-green-500 [&::-webkit-slider-thumb]:cursor-pointer"
-    />
-    <i class="material-icons align-middle">volume_up</i>
-  </div>
-  
-  <!-- Update Container -->
-  {#if isUpdateAvailable}
-    <div 
-      id="update-container"
-      class="text-[0.7em] p-[0.7em] m-0 bg-d2-update-bg absolute bottom-0 w-full left-0"
-    >
-      <span id="update-text">
-        {isUpdateDownloading ? 'Update Downloading!' : 'Update Available!'}
-      </span>
-      {#if !isUpdateDownloading}
-        <span id="update-buttons" class="ml-2">
-          <button class="d2button btn-primary" on:click={installUpdate}>Install</button>
-          <button class="d2button btn-secondary ml-2" on:click={ignoreUpdateHandler}>Ignore</button>
-        </span>
+
+    <!-- Zone and Track Info -->
+    <div class="px-4 py-2 flex flex-col gap-2">
+      {#if currentZoneName}
+        <div class="text-xl font-bold">{currentZoneName}</div>
+      {:else}
+        <div class="text-xl font-bold text-d2-text/60">No zone detected</div>
       {/if}
+      
+      {#if currentTrackName}
+        <div class="text-base">Now Playing: <span class="font-normal">{currentTrackName}</span></div>
+      {:else}
+        <div class="text-base text-d2-text/60">Now Playing: No track</div>
+      {/if}
+    </div>
+
+    <!-- Player Containers -->
+    <div id="youtube-parent-container" class="mt-2 h-[220px] flex-shrink-0"></div>
+    <div id="local-parent-container" class="hidden"></div>
+
+    <!-- Volume Control -->
+    <div id="volume-control-container" class="flex items-center justify-center gap-2 px-4 py-3 flex-shrink-0">
+      <i class="material-icons align-middle text-lg">volume_down</i>
+      <input 
+        type="range" 
+        min="0" 
+        max="100" 
+        step="1" 
+        bind:value={playerVolume}
+        on:input={(e) => handleVolumeChange(e.target.value)}
+        class="w-[200px] h-2 rounded-lg bg-gray-300 outline-none appearance-none cursor-pointer
+               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 
+               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-green-500 [&::-webkit-slider-thumb]:cursor-pointer"
+      />
+      <i class="material-icons align-middle text-lg">volume_up</i>
+    </div>
+
+    <!-- Spacer to push update container to bottom -->
+    <div class="flex-grow"></div>
+
+    <!-- Update Container -->
+    {#if isUpdateAvailable}
+      <div 
+        id="update-container"
+        class="text-sm p-3 m-0 bg-d2-update-bg w-full"
+      >
+        <span id="update-text">
+          {isUpdateDownloading ? 'Update Downloading!' : 'Update Available!'}
+        </span>
+        {#if !isUpdateDownloading}
+          <span id="update-buttons" class="ml-2">
+            <button class="d2button btn-primary" on:click={installUpdate}>Install</button>
+            <button class="d2button btn-secondary ml-2" on:click={ignoreUpdateHandler}>Ignore</button>
+          </span>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
+  <!-- Settings Modal -->
+  {#if showSettings}
+    <!-- Fullscreen Modal -->
+    <div 
+      class="fixed inset-0 z-50 bg-d2-button border-4 border-d2-button-border p-6 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+    >
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="settings-title" class="text-2xl font-bold">Settings</h2>
+          <button
+            on:click={closeSettings}
+            class="p-1 hover:bg-d2-button-hover rounded transition-colors"
+            title="Close"
+          >
+            <i class="material-icons text-d2-text">close</i>
+          </button>
+        </div>
+
+        <!-- Settings Content -->
+        <div class="space-y-4">
+          <!-- Path of Exile Directory Selection -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-lg">Select Path of Exile Directory</span>
+              <i 
+                class="material-icons text-green-500 {poePathValid ? 'inline' : 'hidden'}" 
+                title="Path of Exile Detected!"
+              >
+                check_circle
+              </i>
+              <i 
+                class="material-icons text-red-500 cursor-pointer {!poePathValid ? 'inline' : 'hidden'}" 
+                title="Cannot locate path of exile client log."
+              >
+                error
+              </i>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" class="d2button" on:click={loadLogFile}>...</button>
+              <button
+                type="button"
+                class="text-sm flex-1 truncate cursor-pointer hover:text-d2-text-hover px-2 py-1 text-left"
+                on:click={loadLogFile}
+                title={poePath}
+              >
+                {poePath}
+              </button>
+            </div>
+          </div>
+
+          <!-- Music Volume Check -->
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-lg">Turn off in game music</span>
+              <i 
+                class="material-icons text-green-500 {volumeValid ? 'inline' : 'hidden'}" 
+                title="Checks out."
+              >
+                check_circle
+              </i>
+              <i 
+                class="material-icons text-orange-500 cursor-pointer {!volumeValid ? 'inline' : 'hidden'}" 
+                title="Set the music volume in game to 0 to avoid clashing tracks."
+              >
+                warning
+              </i>
+            </div>
+            <p class="text-sm text-d2-text/80 mt-1">Set the music volume in game to 0 to avoid clashing tracks.</p>
+          </div>
+
+          <!-- Character Event Voices Check -->
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-lg">Enable gameplay event voices</span>
+              <i 
+                class="material-icons text-green-500 {charEventValid ? 'inline' : 'hidden'}" 
+                title="Checks out."
+              >
+                check_circle
+              </i>
+              <i 
+                class="material-icons text-orange-500 cursor-pointer {!charEventValid ? 'inline' : 'hidden'}" 
+                title="Enable gameplay event voices to enable boss music."
+              >
+                warning
+              </i>
+            </div>
+            <p class="text-sm text-d2-text/80 mt-1">Enable gameplay event voices to enable boss music.</p>
+          </div>
+        </div>
     </div>
   {/if}
 </div>
-
