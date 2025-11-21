@@ -219,17 +219,19 @@
     </div>
 
     <!-- Zone and Track Info -->
-    <div class="px-4 py-2 flex flex-col gap-2">
+    <div class="px-4 flex flex-col gap-2">
+      <div class="text-xl">Current Area</div>
       {#if currentZoneName}
-        <div class="text-xl font-bold">{currentZoneName}</div>
+        <div class="text-base font-bold">{currentZoneName}</div>
       {:else}
-        <div class="text-xl font-bold text-d2-text/60">No zone detected</div>
+        <div class="text-base font-bold text-d2-text/60">No zone detected</div>
       {/if}
       
+      <div class="text-xl">Now Playing</div>
       {#if currentTrackName}
-        <div class="text-base">Now Playing: <span class="font-normal">{currentTrackName}</span></div>
+        <div class="text-base font-bold overflow-hidden text-ellipsis whitespace-nowrap">{currentTrackName}</div>
       {:else}
-        <div class="text-base text-d2-text/60">Now Playing: No track</div>
+        <div class="text-base font-bold text-d2-text/60">No track</div>
       {/if}
     </div>
 

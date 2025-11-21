@@ -1,7 +1,7 @@
 const soundtrack = {
 	"tracks": [
 		{
-			"name": "options",
+			"name": "Diablo II Music - Options",
 			"location": "https://www.youtube.com/watch?v=AoTDngh-d2E",
 			"matches": [
 				{
@@ -13,7 +13,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "rogue_encampment",
+			"name": "Diablo II Music - Rogue Encampment",
 			"location": "https://www.youtube.com/watch?v=t1Zf9w--VhM",
 			"matches": [
 				{
@@ -22,7 +22,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "wild",
+			"name": "Diablo II Music - Wild",
 			"location": "https://www.youtube.com/watch?v=LEKoC5s6150",
 			"matches": [
 				{
@@ -55,7 +55,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "tristram",
+			"name": "Diablo II Music - Tristram",
 			"location": "https://www.youtube.com/watch?v=8nl4KeCiEtQ",
 			"matches": [
 				{
@@ -73,7 +73,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "monastery",
+			"name": "Diablo II Music - Monastery",
 			"location": "https://www.youtube.com/watch?v=HvMeIJOqrhg",
 			"matches": [
 				{
@@ -88,7 +88,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "caves",
+			"name": "Diablo II Music - Caves",
 			"location": "https://www.youtube.com/watch?v=0Zd0zDnTCoM",
 			"matches": [
 				{
@@ -103,7 +103,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "crypt",
+			"name": "Diablo II Music - Crypt",
 			"location": "https://www.youtube.com/watch?v=U2eHs-C1828",
 			"matches": [
 				{
@@ -118,7 +118,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "lut_gholein",
+			"name": "Diablo II Music - Lut Gholein",
 			"location": "https://www.youtube.com/watch?v=OmdXk3jJsB0",
 			"matches": [
 				{
@@ -127,7 +127,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "desert",
+			"name": "Diablo II Music - Desert",
 			"location": "https://www.youtube.com/watch?v=mseOvWsn55w",
 			"matches": [
 				{
@@ -154,7 +154,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "valley",
+			"name": "Diablo II Music - Valley",
 			"location": "https://www.youtube.com/watch?v=PYe_Dd48Mcs",
 			"matches": [
 				{
@@ -181,7 +181,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "sewer",
+			"name": "Diablo II Music - Sewer",
 			"location": "https://www.youtube.com/watch?v=LH_F9SshwIw",
 			"matches": [
 				{
@@ -193,7 +193,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "tombs",
+			"name": "Diablo II Music - Tombs",
 			"location": "https://www.youtube.com/watch?v=YnSKVIH4_3k",
 			"matches": [
 				{
@@ -217,7 +217,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "lair",
+			"name": "Diablo II Music - Lair",
 			"location": "https://www.youtube.com/watch?v=MbyhMeB10t8",
 			"matches": [
 				{
@@ -238,7 +238,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "harem",
+			"name": "Diablo II Music - Harem",
 			"location": "https://www.youtube.com/watch?v=ub_Igr_L-rw",
 			"matches": [
 				{
@@ -262,7 +262,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "sanctuary",
+			"name": "Diablo II Music - Sanctuary",
 			"location": "https://www.youtube.com/watch?v=CoTRxDhyzms",
 			"matches": [
 				{
@@ -280,7 +280,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "kurast_docks",
+			"name": "Diablo II Music - Kurast Docks",
 			"location": "https://www.youtube.com/watch?v=OehozBDOF_Q",
 			"matches": [
 				{
@@ -292,7 +292,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "jungle",
+			"name": "Diablo II Music - Jungle",
 			"location": "https://www.youtube.com/watch?v=3ZXLsl2qazQ",
 			"matches": [
 				{
@@ -325,7 +325,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "kurast",
+			"name": "Diablo II Music - Kurast",
 			"location": "https://www.youtube.com/watch?v=bwPNeWUSjKQ",
 			"matches": [
 				{
@@ -340,7 +340,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "spider",
+			"name": "Diablo II Music - Spider",
 			"location": "https://www.youtube.com/watch?v=Ocp7GyhyeTo",
 			"matches": [
 				{
@@ -358,7 +358,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "kurast_sewers",
+			"name": "Diablo II Music - Kurast Sewer",
 			"location": "https://www.youtube.com/watch?v=AvfZRdGZstA",
 			"matches": [
 				{
@@ -391,7 +391,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "pandemonium_fortress",
+			"name": "Diablo II Music - Pandemonium Fortress",
 			"location": "https://www.youtube.com/watch?v=v2XzZZI0f48",
 			"matches": [
 				{
@@ -400,7 +400,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "mesa",
+			"name": "Diablo II Music - Mesa",
 			"location": "https://www.youtube.com/watch?v=qlIBDL_W8xo",
 			"matches": [
 				{
@@ -430,7 +430,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "diablo",
+			"name": "Diablo II Music - Diablo",
 			"location": "https://www.youtube.com/watch?v=n041TsHeJi8",
 			"matches": [
 				{
@@ -451,7 +451,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "intro",
+			"name": "Diablo II Music - Intro",
 			"location": "https://www.youtube.com/watch?v=LngkyTYbLrk",
 			"matches": [
 				{
@@ -466,7 +466,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "harrogath",
+			"name": "Diablo 2 LoD Soundtrack Harrogath",
 			"location": "https://www.youtube.com/watch?v=layjWs2IpS4",
 			"matches": [
 				{
@@ -481,7 +481,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "siege",
+			"name": "Diablo II Music - Siege",
 			"location": "https://www.youtube.com/watch?v=HylopY97ALc",
 			"matches": [
 				{
@@ -508,7 +508,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "ice_caves",
+			"name": "Diablo II Music - Ice Caves",
 			"location": "https://www.youtube.com/watch?v=hMppfXwvVoM",
 			"matches": [
 				{
@@ -520,7 +520,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "temple",
+			"name": "Diablo II Music - Temple",
 			"location": "https://www.youtube.com/watch?v=YuTE61U3iJM",
 			"matches": [
 				{
@@ -532,7 +532,7 @@ const soundtrack = {
 			]
 		},
 		{
-			"name": "baal",
+			"name": "Diablo II Music - Baal",
 			"location": "https://www.youtube.com/watch?v=xcuz5IofwKo",
 			"matches": [
 				{
