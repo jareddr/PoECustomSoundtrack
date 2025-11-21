@@ -179,23 +179,78 @@
     if (trackNameElement && trackTextElement) {
       const container = trackNameElement;
       const textSpan = trackTextElement;
-      const isOverflowing = textSpan.scrollWidth > container.clientWidth;
+      
+      // Force a reflow to ensure accurate measurements
+      void container.offsetWidth;
+      void textSpan.offsetWidth;
+      
+      // Use getBoundingClientRect for more accurate measurements
+      const containerRect = container.getBoundingClientRect();
+      const textRect = textSpan.getBoundingClientRect();
+      
+      const containerWidth = containerRect.width;
+      // Try multiple methods to get text width
+      const textWidth = Math.max(
+        textSpan.scrollWidth,
+        textSpan.offsetWidth,
+        textRect.width,
+        textSpan.getBoundingClientRect().width
+      );
+      
+      const isOverflowing = textWidth > containerWidth && containerWidth > 0 && textWidth > 0;
+      
+      console.log('Overflow check:', {
+        containerWidth,
+        textWidth,
+        scrollWidth: textSpan.scrollWidth,
+        offsetWidth: textSpan.offsetWidth,
+        rectWidth: textRect.width,
+        isOverflowing,
+        trackName: currentTrackName
+      });
+      
       shouldScrollTrack = isOverflowing;
-      if (isOverflowing) {
+      
+      if (isOverflowing && containerWidth > 0 && textWidth > 0) {
         // Calculate how much we need to scroll
-        trackScrollAmount = textSpan.scrollWidth - container.clientWidth;
-        // Set CSS variable for animation
+        trackScrollAmount = textWidth - containerWidth;
+        console.log('Setting scroll amount:', trackScrollAmount);
+        // Set CSS variable on both container and span to ensure it's accessible
         container.style.setProperty('--scroll-amount', `${trackScrollAmount}px`);
+        textSpan.style.setProperty('--scroll-amount', `${trackScrollAmount}px`);
+        console.log('CSS variable set. Container classes:', container.className);
+        console.log('Span classes:', textSpan.className);
+        console.log('Span style:', textSpan.style.cssText);
       } else {
         container.style.removeProperty('--scroll-amount');
+        textSpan.style.removeProperty('--scroll-amount');
+        // If textWidth is 0, retry after a delay
+        if (textWidth === 0 && currentTrackName) {
+          setTimeout(() => {
+            checkTrackNameOverflow();
+          }, 200);
+        }
       }
     }
   }
   
   // Check overflow when track name changes or elements are available
-  $: if (currentTrackName && trackNameElement && trackTextElement) {
-    // Use setTimeout to ensure DOM has updated
-    setTimeout(checkTrackNameOverflow, 0);
+  $: if (currentTrackName) {
+    // Use a small delay to ensure DOM has fully updated
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        checkTrackNameOverflow();
+      });
+    }, 100);
+  }
+  
+  // Also check when elements become available
+  $: if (trackNameElement && trackTextElement && currentTrackName) {
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        checkTrackNameOverflow();
+      });
+    }, 100);
   }
   
   // Handle Escape key to close settings
@@ -262,8 +317,9 @@
           bind:this={trackNameElement}
         >
           <span 
-            class="{shouldScrollTrack ? 'scrolling-text' : ''}"
+            class="inline-block {shouldScrollTrack ? 'scrolling-text text-red-500' : ''}"
             bind:this={trackTextElement}
+            style={shouldScrollTrack && trackScrollAmount > 0 ? `--scroll-amount: ${trackScrollAmount}px;` : ''}
           >{currentTrackName}</span>
         </div>
       {:else}
@@ -427,8 +483,11 @@
     0%, 25% {
       transform: translateX(0);
     }
-    50%, 75% {
-      transform: translateX(calc(-1 * var(--scroll-amount, 0px)));
+    30% {
+      transform: translateX(0);
+    }
+    70% {
+      transform: translateX(calc(-1 * var(--scroll-amount)));
     }
     100% {
       transform: translateX(0);
