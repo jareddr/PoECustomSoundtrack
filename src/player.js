@@ -49,16 +49,15 @@ class PlayerController {
    * @param {number} startingPosition - Starting position in seconds
    */
   setTrack(track, startingPosition) {
+    let existingPlayer;
     if (this.activePlayer && this.activePlayer.player) {
-      this.activePlayer.fadeout();
-      delete this.activePlayer;
+      existingPlayer = this.activePlayer;
     }
-    this.activePlayer = new this.players[track.type](
-      track,
-      startingPosition,
-      `${track.type}-parent-container`,
-      this
-    );
+    this.activePlayer = new this.players[track.type](track, startingPosition, `${track.type}-parent-container`, this);
+    if (existingPlayer) {
+      existingPlayer.fadeout();
+      existingPlayer = null;
+    }
   }
 
   /**
@@ -314,6 +313,7 @@ class YoutubePlayer {
       await sleep(PLAYER_CONSTANTS.FADEOUT_INTERVAL_MS);
     }
 
+    this.pause();
     this.destroy();
   }
 
