@@ -23,6 +23,9 @@ class PlayerController {
     this.state = false;
     this.activePlayer = false;
     this.volume = PLAYER_CONSTANTS.DEFAULT_VOLUME;
+    this.youtubePlayer1 = null;
+    this.youtubePlayer2 = null;
+    this.activeYoutubePlayerIndex = null;
   }
 
   /**
@@ -49,14 +52,145 @@ class PlayerController {
    * @param {number} startingPosition - Starting position in seconds
    */
   setTrack(track, startingPosition) {
-    let existingPlayer;
-    if (this.activePlayer && this.activePlayer.player) {
-      existingPlayer = this.activePlayer;
-    }
-    this.activePlayer = new this.players[track.type](track, startingPosition, `${track.type}-parent-container`, this);
-    if (existingPlayer) {
-      existingPlayer.fadeout();
-      existingPlayer = null;
+    // Use player pool for YouTube tracks
+    if (track.type === 'youtube') {
+      console.log(`[PlayerController] Setting YouTube track: ${track.id || track.name || 'unknown'}, starting at ${startingPosition}s`);
+      
+      // Get the currently active YouTube player (if any)
+      let activeYoutubePlayer = null;
+      if (this.activeYoutubePlayerIndex === 1 && this.youtubePlayer1) {
+        activeYoutubePlayer = this.youtubePlayer1;
+        console.log(`[PlayerController] Currently active: Player 1`);
+      } else if (this.activeYoutubePlayerIndex === 2 && this.youtubePlayer2) {
+        activeYoutubePlayer = this.youtubePlayer2;
+        console.log(`[PlayerController] Currently active: Player 2`);
+      } else {
+        console.log(`[PlayerController] No active player currently`);
+      }
+
+      // Start fadeout on the active player if it exists
+      if (activeYoutubePlayer && activeYoutubePlayer.player) {
+        console.log(`[PlayerController] Starting fadeout on active player`);
+        activeYoutubePlayer.fadeout();
+      }
+
+      // Get the inactive player (will initialize both if needed)
+      const inactivePlayer = this._getInactiveYoutubePlayer(track, startingPosition);
+
+      // Determine which player we're using
+      const playerIndex = inactivePlayer === this.youtubePlayer1 ? 1 : 2;
+      console.log(`[PlayerController] Using Player ${playerIndex} for track: ${track.id}`);
+      console.log(`[PlayerController] Player ${playerIndex} state - ready: ${inactivePlayer.ready}, has player object: ${!!inactivePlayer.player}, player type: ${typeof inactivePlayer.player}`);
+
+      // Update the inactive player's track information
+      inactivePlayer.track = track;
+      inactivePlayer.startTime = startingPosition;
+      inactivePlayer.endTime = track.endSeconds || 0;
+
+      // Make the player visible again if it was hidden
+      if (inactivePlayer.player && inactivePlayer.player.setSize) {
+        inactivePlayer.player.setSize(YOUTUBE_CONSTANTS.PLAYER_WIDTH, YOUTUBE_CONSTANTS.PLAYER_HEIGHT);
+      }
+
+      // Restore volume to controller volume in case it was faded out
+      if (inactivePlayer.player && inactivePlayer.player.setVolume) {
+        inactivePlayer.player.setVolume(this.volume);
+      }
+
+      // Load the new track on the inactive player
+      // This is critical - we must ensure the track loads even if player was created with empty track
+      const attemptLoadTrack = () => {
+        // Double-check that we have everything we need
+        if (!inactivePlayer) {
+          console.log(`[PlayerController] attemptLoadTrack: inactivePlayer is null/undefined`);
+          return false;
+        }
+        // Check if player object exists and is not false/null
+        // this.player is initialized to false, so we need to check it's actually an object
+        if (!inactivePlayer.player || inactivePlayer.player === false) {
+          console.log(`[PlayerController] attemptLoadTrack: Player ${playerIndex} - player object not available yet`);
+          return false; // Player object not available yet
+        }
+        // Check if player has the methods we need
+        if (typeof inactivePlayer.player.loadVideoById !== 'function') {
+          console.log(`[PlayerController] attemptLoadTrack: Player ${playerIndex} - loadVideoById method not available`);
+          return false; // Player object not fully initialized
+        }
+        if (!inactivePlayer.track || !inactivePlayer.track.id || inactivePlayer.track.id.trim() === '') {
+          console.log(`[PlayerController] attemptLoadTrack: Player ${playerIndex} - track ID not available (track: ${inactivePlayer.track ? inactivePlayer.track.id : 'null'})`);
+          return false; // Track or track ID not available or empty
+        }
+        // Only load if player is ready
+        if (!inactivePlayer.ready) {
+          console.log(`[PlayerController] attemptLoadTrack: Player ${playerIndex} - not ready yet`);
+          return false; // Player not ready yet
+        }
+        try {
+          console.log(`[PlayerController] attemptLoadTrack: Player ${playerIndex} - Loading video ${inactivePlayer.track.id} at ${inactivePlayer.startTime}s, end: ${inactivePlayer.endTime}s`);
+          inactivePlayer.setTrack(inactivePlayer.track.id, inactivePlayer.startTime, inactivePlayer.endTime);
+          console.log(`[PlayerController] attemptLoadTrack: Player ${playerIndex} - Successfully called setTrack`);
+          return true; // Successfully attempted to load
+        } catch (error) {
+          console.error(`[PlayerController] attemptLoadTrack: Player ${playerIndex} - Error loading track:`, error);
+          return false;
+        }
+      };
+
+      // Try to load immediately if conditions are met
+      console.log(`[PlayerController] Attempting to load track on Player ${playerIndex} immediately`);
+      let loaded = attemptLoadTrack();
+
+      // Always set up retries to handle timing issues
+      // This is especially important for players that were created with empty tracks
+      // and became ready before we set the real track
+      const retryLoad = (delay) => {
+        return () => {
+          if (!loaded) {
+            console.log(`[PlayerController] Retry loading track on Player ${playerIndex} after ${delay}ms delay`);
+            if (attemptLoadTrack()) {
+              loaded = true;
+              console.log(`[PlayerController] Successfully loaded track on Player ${playerIndex} on retry`);
+            }
+          }
+        };
+      };
+      
+      // Multiple retry attempts to handle various timing scenarios
+      if (!loaded) {
+        console.log(`[PlayerController] Setting up retries for Player ${playerIndex}`);
+        setTimeout(retryLoad(50), 50);   // Quick check for immediate ready state
+        setTimeout(retryLoad(200), 200);    // Check after short delay
+        setTimeout(retryLoad(500), 500);   // Check after medium delay
+        setTimeout(retryLoad(1000), 1000);  // Final fallback check
+      } else {
+        console.log(`[PlayerController] Track loaded immediately on Player ${playerIndex}`);
+      }
+
+      // Set the inactive player as active
+      if (inactivePlayer === this.youtubePlayer1) {
+        this.activeYoutubePlayerIndex = 1;
+        console.log(`[PlayerController] Set Player 1 as active`);
+      } else if (inactivePlayer === this.youtubePlayer2) {
+        this.activeYoutubePlayerIndex = 2;
+        console.log(`[PlayerController] Set Player 2 as active`);
+      }
+
+      this.activePlayer = inactivePlayer;
+    } else {
+      // For non-YouTube players (e.g., local), use existing behavior
+      let existingPlayer;
+      if (this.activePlayer && this.activePlayer.player) {
+        existingPlayer = this.activePlayer;
+      }
+      this.activePlayer = new this.players[track.type](track, startingPosition, `${track.type}-parent-container`, this);
+      if (existingPlayer) {
+        existingPlayer.fadeout();
+        existingPlayer = null;
+      }
+      // Reset YouTube player index when switching to non-YouTube
+      if (this.activePlayer && !(this.activePlayer instanceof YoutubePlayer)) {
+        this.activeYoutubePlayerIndex = null;
+      }
     }
   }
 
@@ -105,6 +239,62 @@ class PlayerController {
       this.activePlayer.setVolume(volume);
     }
   }
+
+  /**
+   * Initialize a YouTube player instance
+   * @param {number} index - Player index (1 or 2)
+   * @param {string} containerId - Container ID for the player
+   * @param {Object} track - Track object (can be null for initial setup)
+   * @param {number} startingPosition - Starting position in seconds
+   * @returns {YoutubePlayer} Initialized YouTube player instance
+   */
+  _initializeYoutubePlayer(index, containerId, track, startingPosition) {
+    const YoutubePlayerClass = this.players['youtube'];
+    if (!YoutubePlayerClass) {
+      return null;
+    }
+
+    // Create a placeholder track if none provided
+    const playerTrack = track || { id: '', endSeconds: 0 };
+    const player = new YoutubePlayerClass(playerTrack, startingPosition || 0, containerId, this);
+    
+    if (index === 1) {
+      this.youtubePlayer1 = player;
+    } else if (index === 2) {
+      this.youtubePlayer2 = player;
+    }
+    
+    return player;
+  }
+
+  /**
+   * Get the inactive YouTube player, initializing both if needed
+   * @param {Object} track - Track object
+   * @param {number} startingPosition - Starting position in seconds
+   * @returns {YoutubePlayer} The inactive player instance
+   */
+  _getInactiveYoutubePlayer(track, startingPosition) {
+    // Initialize both players if they don't exist
+    if (!this.youtubePlayer1) {
+      this._initializeYoutubePlayer(1, 'youtube-parent-container', null, 0);
+    }
+    if (!this.youtubePlayer2) {
+      this._initializeYoutubePlayer(2, 'youtube-parent-container', null, 0);
+    }
+
+    // Determine which player is currently active
+    let inactivePlayer;
+    if (this.activeYoutubePlayerIndex === 1) {
+      inactivePlayer = this.youtubePlayer2;
+    } else if (this.activeYoutubePlayerIndex === 2) {
+      inactivePlayer = this.youtubePlayer1;
+    } else {
+      // No active player, use player 1
+      inactivePlayer = this.youtubePlayer1;
+    }
+
+    return inactivePlayer;
+  }
 }
 
 /**
@@ -140,7 +330,9 @@ class YoutubePlayer {
    */
   onPlayerReady() {
     this.ready = true;
-    if (this.track) {
+    // Only load track if we have a valid track ID (non-empty string)
+    // Empty string is falsy, so this check prevents loading empty tracks
+    if (this.track && this.track.id && this.track.id.trim() !== '') {
       this.setTrack(this.track.id, this.startTime, this.endTime);
     }
   }
@@ -173,17 +365,49 @@ class YoutubePlayer {
     this.container = this.newPlayerContainer(container);
     this.element = this.container;
 
+    // Create a callback queue for multiple players
+    if (!window._youtubePlayerQueue) {
+      window._youtubePlayerQueue = [];
+    }
+
+    const initCallback = () => {
+      console.log(`[YoutubePlayer] Initializing player for container ${this.container.id}`);
+      this.newPlayer();
+    };
+
     if ('YT' in window) {
-      window.YT.ready(() => this.newPlayer());
+      // API already loaded, call immediately
+      window.YT.ready(initCallback);
     } else {
-      window.onYouTubeIframeAPIReady = () => this.newPlayer();
+      // API not loaded yet, add to queue
+      window._youtubePlayerQueue.push(initCallback);
+      
+      // Set up the global callback if not already set
+      if (!window.onYouTubeIframeAPIReady) {
+        window.onYouTubeIframeAPIReady = () => {
+          console.log(`[YoutubePlayer] YouTube API ready, initializing ${window._youtubePlayerQueue.length} players`);
+          // Call all queued callbacks
+          const queue = window._youtubePlayerQueue.slice(); // Copy array
+          window._youtubePlayerQueue = []; // Clear queue
+          queue.forEach(callback => {
+            try {
+              callback();
+            } catch (error) {
+              console.error('[YoutubePlayer] Error in initialization callback:', error);
+            }
+          });
+        };
+      }
     }
 
     if (!('YT' in window)) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      // Only load the script once
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      }
     }
   }
 
@@ -223,6 +447,11 @@ class YoutubePlayer {
     });
     this.element = this.container;
     this.initialized = true;
+    
+    // Start hidden (size 0,0) - will be shown when activated
+    if (this.player && this.player.setSize) {
+      this.player.setSize(0, 0);
+    }
   }
 
   /**
@@ -250,29 +479,47 @@ class YoutubePlayer {
    * @param {number} endingTime - End time in seconds (0 for full video)
    */
   setTrack(id, startingTime, endingTime) {
+    // Validate inputs
+    if (!id || id.trim() === '') {
+      console.warn('[YoutubePlayer] setTrack called with empty video ID');
+      return;
+    }
+
+    console.log(`[YoutubePlayer] setTrack called - video: ${id}, start: ${startingTime}s, end: ${endingTime}s, ready: ${this.ready}, has player: ${!!this.player}`);
+
     // Delay to ensure HTML5 player works correctly
     setTimeout(() => {
       if (!this.player) {
+        console.warn('[YoutubePlayer] setTrack: player object not available after delay');
         return;
       }
 
-      if (endingTime > 0) {
-        // endingTime > 0 will be added to endSeconds in loadVideoById
-        this.player.loadVideoById({
-          videoId: id,
-          startSeconds: startingTime,
-          endSeconds: endingTime,
-        });
-      } else {
-        // Otherwise will behave as normal
-        this.player.loadVideoById({
-          videoId: id,
-          startSeconds: startingTime,
-        });
-      }
+      try {
+        console.log(`[YoutubePlayer] Loading video ${id} into player`);
+        if (endingTime > 0) {
+          // endingTime > 0 will be added to endSeconds in loadVideoById
+          this.player.loadVideoById({
+            videoId: id,
+            startSeconds: startingTime,
+            endSeconds: endingTime,
+          });
+          console.log(`[YoutubePlayer] Called loadVideoById with endSeconds: ${endingTime}`);
+        } else {
+          // Otherwise will behave as normal
+          this.player.loadVideoById({
+            videoId: id,
+            startSeconds: startingTime,
+          });
+          console.log(`[YoutubePlayer] Called loadVideoById without endSeconds`);
+        }
 
-      this.player.setVolume(this.controller.volume);
-      this.play();
+        this.player.setVolume(this.controller.volume);
+        console.log(`[YoutubePlayer] Set volume to ${this.controller.volume}`);
+        this.play();
+        console.log(`[YoutubePlayer] Called play()`);
+      } catch (error) {
+        console.error('[YoutubePlayer] Error in setTrack:', error);
+      }
     }, PLAYER_CONSTANTS.YOUTUBE_LOAD_DELAY_MS);
   }
 
@@ -299,7 +546,10 @@ class YoutubePlayer {
    */
   async fadeout() {
     if (!this.player || !this.player.setSize) {
-      this.destroy();
+      // If player doesn't support setSize, just pause it
+      if (this.player) {
+        this.pause();
+      }
       return;
     }
 
@@ -314,7 +564,7 @@ class YoutubePlayer {
     }
 
     this.pause();
-    this.destroy();
+    // Do not destroy - player will be reused
   }
 
   /**
