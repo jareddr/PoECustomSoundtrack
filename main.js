@@ -142,8 +142,11 @@ function startLocalServer() {
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 320,
-    height: 535,
+    width: 783,
+    height: 575,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
     resizable: false,
     minimizable: false,
     maximizable: false,
