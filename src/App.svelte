@@ -443,6 +443,7 @@
   on:input={(e) => updateVolumeImmediate(e.target.value)}
   on:change={(e) => handleVolumeChange(e.target.value)}
   class="vertical-slider"
+  style="--volume-percent: {playerVolume}%"
 />
 </div>
   </div>
@@ -638,8 +639,15 @@
 /* Track */
 .vertical-slider::-webkit-slider-runnable-track {
   height: 8px;
-  background: #220e05;
+  background: linear-gradient(
+    90deg,
+    #ffd700 0%,
+    #ffd700 var(--volume-percent, 0%),
+    #220e05 var(--volume-percent, 0%),
+    #220e05 100%
+  );
   border-radius: 5px;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 12px rgba(255, 215, 0, 0.4);
 }
 
 /* Thumb with your image */
