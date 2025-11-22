@@ -318,9 +318,17 @@ function setupIpcHandlers() {
 
   // IPC handler for closing the app
   ipcMain.on('close-app', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.close();
-    }
+    // Set a flag to indicate we're quitting (prevents window recreation on some platforms)
+    app.isQuiting = true;
+    // Destroy all windows immediately (more forceful than close())
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach(win => {
+      if (!win.isDestroyed()) {
+        win.destroy();
+      }
+    });
+    // Quit the app
+    app.quit();
   });
 }
 

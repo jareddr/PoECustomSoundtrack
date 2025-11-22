@@ -324,6 +324,7 @@
     on:click={closeApp}
     class="decorative-button button-top-right no-drag"
     title="Close App"
+    style="pointer-events: auto; z-index: 1000;"
   >
     <div class="button-bg"></div>
     <i class="material-icons button-icon">close</i>
@@ -747,6 +748,7 @@
   background-size: contain;
   top: 0;
   left: 0;
+  pointer-events: none; /* Allow clicks to pass through to button */
 }
 
 .button-icon {

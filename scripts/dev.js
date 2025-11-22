@@ -1,5 +1,4 @@
 const { spawn } = require('child_process');
-const { exec } = require('child_process');
 const http = require('http');
 
 const VITE_DEV_SERVER_URL = 'http://localhost:5173';
@@ -59,9 +58,36 @@ viteProcess = spawn('npm', ['run', 'dev'], {
 setTimeout(async () => {
   try {
     await waitForServer();
-    exec('cross-env NODE_ENV=development electron main.js', {
-      stdio: 'inherit',
+    console.log('\n=== Starting Electron Main Process ===\n');
+    const electronProcess = spawn('npx', ['cross-env', 'NODE_ENV=development', 'electron', 'main.js'], {
       shell: true,
+      cwd: process.cwd(),
+    });
+    
+    // Pipe Electron stdout with prefix
+    electronProcess.stdout.on('data', (data) => {
+      const lines = data.toString().split('\n').filter(line => line.trim());
+      lines.forEach(line => {
+        console.log(`[ELECTRON] ${line}`);
+      });
+    });
+    
+    // Pipe Electron stderr with prefix
+    electronProcess.stderr.on('data', (data) => {
+      const lines = data.toString().split('\n').filter(line => line.trim());
+      lines.forEach(line => {
+        console.error(`[ELECTRON] ${line}`);
+      });
+    });
+    
+    electronProcess.on('error', (error) => {
+      console.error('[ELECTRON] Error starting Electron:', error);
+      cleanup();
+    });
+    
+    electronProcess.on('exit', (code) => {
+      console.log(`\n[ELECTRON] Process exited with code ${code}\n`);
+      cleanup();
     });
   } catch (error) {
     console.error('Error starting Electron:', error);
