@@ -172,13 +172,30 @@
     showSettings = false;
   }
 
-  async function openEditor() {
+  async   function openEditor() {
     try {
-      await ipcRenderer.invoke('open-editor-window');
+      ipcRenderer.invoke('open-editor-window');
     } catch (err) {
       console.error('Error opening editor window:', err);
       alert('Failed to open editor window');
     }
+  }
+
+  function togglePlayPause() {
+    if (playerController) {
+      if (isPlaying) {
+        playerController.pause();
+        isPlaying = false;
+      } else {
+        // Resume playing
+        playerController.play();
+        isPlaying = true;
+      }
+    }
+  }
+
+  function closeApp() {
+    ipcRenderer.send('close-app');
   }
 
   let trackScrollAmount = 0;
@@ -281,17 +298,69 @@
   class="h-screen overflow-hidden font-sans text-d2-text relative window-drag"
   style="background-image: url(/mirror.png); background-size: cover; background-position: center;"
 >
-  <!-- Settings Cog Icon -->
+  <!-- Decorative Buttons -->
+  <!-- Top Left Button (70px) - Load Folder -->
+  <button
+    on:click={loadSoundtrackFile}
+    class="decorative-button button-top-left no-drag"
+    title="Load Soundtrack"
+  >
+    <div class="button-bg"></div>
+    <i class="material-icons button-icon">folder</i>
+  </button>
+
+  <!-- Top Center Button (70px) - Settings -->
+  <button
+    on:click={toggleSettings}
+    class="decorative-button button-top-center no-drag"
+    title="Settings"
+  >
+    <div class="button-bg"></div>
+    <i class="material-icons button-icon">settings</i>
+  </button>
+
+  <!-- Top Right Button (70px) - Close -->
+  <button
+    on:click={closeApp}
+    class="decorative-button button-top-right no-drag"
+    title="Close App"
+  >
+    <div class="button-bg"></div>
+    <i class="material-icons button-icon">close</i>
+  </button>
+
+  <!-- Bottom Left Button (70px) - Play/Pause -->
+  <button
+    on:click={togglePlayPause}
+    class="decorative-button button-bottom-left no-drag"
+    title="Play/Pause"
+  >
+    <div class="button-bg"></div>
+    <i class="material-icons button-icon">{isPlaying ? 'pause' : 'play_arrow'}</i>
+  </button>
+
+  <!-- Bottom Right Button (100px) - Edit -->
+  <button
+    on:click={openEditor}
+    class="decorative-button button-bottom-right no-drag"
+    title="Edit Soundtrack"
+  >
+    <div class="button-bg"></div>
+    <i class="material-icons button-icon">edit</i>
+  </button>
+
+  <!-- Settings Cog Icon (keeping old one for now, can be removed later) -->
   <button
     on:click={toggleSettings}
     class="absolute top-2 right-2 z-50 p-2 hover:bg-black/20 rounded transition-colors no-drag"
     title="Settings"
+    style="display: none;"
   >
     <i class="material-icons text-d2-text text-2xl">settings</i>
   </button>
 
-  <!-- Soundtrack Selection at Top -->
-  <div class="absolute top-2 left-2 z-50 no-drag">
+  <!-- Soundtrack Selection at Top (hidden, replaced by decorative buttons) -->
+  <div class="absolute top-2 left-2 z-50 no-drag" style="display: none;">
     <div class="flex items-center gap-2">
       <button type="button" class="d2button" on:click={loadSoundtrackFile}>...</button>
       <button
@@ -585,5 +654,111 @@
   margin-left: 3px;
   border: none;
   cursor: pointer;
+}
+
+/* Decorative Buttons */
+.decorative-button {
+  position: absolute;
+  z-index: 50;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+
+/* Top buttons (70px) */
+.button-top-center {
+  width: 100px;
+  height: 100px;
+  top: 0%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.button-top-left {
+  width: 100px;
+  height: 100px;
+  top: 12.5%;
+  left: 19.5%;
+}
+
+.button-top-right {
+  width: 100px;
+  height: 100px;
+  top: 12.5%;
+  right: 19.5%;
+}
+
+/* Bottom buttons */
+.button-bottom-left {
+  width: 132px;
+  height: 132px;
+  bottom: 30.5%;
+  left: 9.2%;
+}
+
+.button-bottom-right {
+  width: 132px;
+  height: 132px;
+  bottom: 30.5%;
+  right: 9.2%;
+}
+
+.decorative-button:hover {
+  transform: scale(1.1);
+}
+
+.button-top-center:hover {
+  transform: translateX(-50%) scale(1.1);
+}
+
+.button-bottom-left:hover {
+  transform: scale(1.1);
+}
+
+.button-bottom-right:hover {
+  transform: scale(1.1);
+}
+
+.decorative-button:active {
+  transform: scale(0.95);
+}
+
+.button-top-center:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.button-bottom-left:active {
+  transform: scale(0.95);
+}
+
+.button-bottom-right:active {
+  transform: scale(0.95);
+}
+
+.button-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url(/button.png) no-repeat center;
+  background-size: contain;
+  top: 0;
+  left: 0;
+}
+
+.button-icon {
+  position: relative;
+  z-index: 1;
+  color: #d2b48c;
+  font-size: 2em;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.button-bottom-right .button-icon {
+  font-size: 2.5em;
 }
 </style>

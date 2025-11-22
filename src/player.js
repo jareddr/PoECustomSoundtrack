@@ -38,6 +38,15 @@ class PlayerController {
   }
 
   /**
+   * Resume/play the currently active player
+   */
+  play() {
+    if (this.activePlayer && this.activePlayer.play) {
+      this.activePlayer.play();
+    }
+  }
+
+  /**
    * Fade out the currently active player
    */
   fadeout() {

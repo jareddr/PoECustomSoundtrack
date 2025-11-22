@@ -315,6 +315,13 @@ function setupIpcHandlers() {
     }
     return { success: true };
   });
+
+  // IPC handler for closing the app
+  ipcMain.on('close-app', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+    }
+  });
 }
 
 /**
