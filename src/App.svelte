@@ -469,7 +469,7 @@
   {#if showSettings}
     <!-- Fullscreen Modal -->
     <div
-      class="fixed inset-0 z-50 bg-bg-100 border-4 border-primary-200 p-6 overflow-y-auto"
+      class="fixed inset-0 z-50 bg-bg-100 border-4 border-primary-200 p-6 overflow-y-auto no-drag"
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-title"
