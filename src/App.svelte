@@ -668,6 +668,13 @@
   justify-content: center;
   padding: 0;
   transition: transform 0.2s ease;
+  outline: none;
+}
+
+.decorative-button:focus,
+.decorative-button:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Top buttons (70px) */
@@ -708,22 +715,6 @@
   right: 9.2%;
 }
 
-.decorative-button:hover {
-  transform: scale(1.1);
-}
-
-.button-top-center:hover {
-  transform: translateX(-50%) scale(1.1);
-}
-
-.button-bottom-left:hover {
-  transform: scale(1.1);
-}
-
-.button-bottom-right:hover {
-  transform: scale(1.1);
-}
-
 .decorative-button:active {
   transform: scale(0.95);
 }
@@ -756,6 +747,12 @@
   color: #d2b48c;
   font-size: 2em;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.decorative-button:hover .button-icon {
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8), 0 0 12px rgba(255, 215, 0, 0.6), 0 0 16px rgba(255, 215, 0, 0.4);
 }
 
 .button-bottom-right .button-icon {
