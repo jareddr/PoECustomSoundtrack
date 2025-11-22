@@ -318,7 +318,7 @@
     <!-- Display Area -->
     <div class="flex bg-black opacity-75 mx-30 w-[350px] h-[180px] rounded-lg">
       <!-- Left Side: Player Container -->
-      <div class="flex-shrink-0 mr-4 border-blue-500 border-0">
+      <div class="flex-shrink-0 rounded-l-lg mr-4 border-blue-500 border-0 overflow-hidden">
         <div id="youtube-parent-container" class="h-[150px] w-[150px]"></div>
         <div id="local-parent-container" class="hidden"></div>
       </div>
