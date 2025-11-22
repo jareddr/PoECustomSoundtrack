@@ -528,12 +528,19 @@
   <div 
     class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center"
     on:click={closeAddTrackModal}
-    role="dialog"
-    aria-modal="true"
+    on:keydown={(e) => e.key === 'Escape' && closeAddTrackModal()}
+    role="button"
+    tabindex="-1"
+    aria-label="Close modal"
   >
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div 
       class="bg-bg-100 border-4 border-primary-200 p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
       on:click|stopPropagation
+      on:keydown|stopPropagation
+      role="dialog"
+      aria-modal="true"
     >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-2xl font-exocet font-bold text-text-100">Add New Track</h3>

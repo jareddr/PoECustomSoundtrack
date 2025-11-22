@@ -362,20 +362,20 @@
   <!-- Volume Control - Vertical Slider at Bottom Center -->
   <div
     id="volume-control-container"
-    class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 no-drag"
+    class="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center no-drag"
   >
-    <i class="material-icons text-lg">volume_up</i>
-    <input
-      type="range"
-      min="0"
-      max="100"
-      step="1"
-      bind:value={playerVolume}
-      on:input={(e) => updateVolumeImmediate(e.target.value)}
-      on:change={(e) => handleVolumeChange(e.target.value)}
-      class="vertical-slider"
-    />
-    <i class="material-icons text-lg">volume_down</i>
+<div class="slider-wrap">
+  <input
+  type="range"
+  min="0"
+  max="100"
+  step="1"
+  bind:value={playerVolume}
+  on:input={(e) => updateVolumeImmediate(e.target.value)}
+  on:change={(e) => handleVolumeChange(e.target.value)}
+  class="vertical-slider"
+/>
+</div>
   </div>
 
   <!-- Update Container -->
@@ -543,52 +543,47 @@
     }
   }
 
-  /* Vertical slider styling */
-  .vertical-slider {
-    writing-mode: bt-lr; /* IE */
-    -webkit-appearance: slider-vertical; /* WebKit */
-    appearance: slider-vertical;
-    width: 8px;
-    height: 150px;
-    padding: 0 5px;
-    background: rgba(211, 211, 211, 0.5);
-    outline: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
+  .slider-wrap {
+  width: 30px;    /* overall visible width */
+  height: 150px;  /* overall visible height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  .vertical-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #22c55e;
-    cursor: pointer;
-    margin-left: -6px;
-  }
+/* Base slider: horizontal, then rotated */
+.vertical-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 150px;   /* this becomes the VERTICAL length */
+  height: 8px;    /* track thickness */
+  background: #220e05;
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
 
-  .vertical-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #22c55e;
-    cursor: pointer;
-    border: none;
-  }
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
 
-  .vertical-slider::-ms-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #22c55e;
-    cursor: pointer;
-  }
+/* Track */
+.vertical-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  background: #220e05;
+  border-radius: 5px;
+}
 
-  .vertical-slider::-ms-track {
-    width: 8px;
-    background: rgba(211, 211, 211, 0.5);
-    border-color: transparent;
-    color: transparent;
-  }
+/* Thumb with your image */
+.vertical-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  background: url(/button.png) no-repeat center;
+  background-size: 30px 30px;
+  margin-top: -9px;
+  margin-left: 3px;
+  border: none;
+  cursor: pointer;
+}
 </style>
