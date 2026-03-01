@@ -657,7 +657,7 @@
   height: 30px;
   background: url(/button.png) no-repeat center;
   background-size: 30px 30px;
-  margin-top: -9px;
+  margin-top: -10px;
   margin-left: 3px;
   border: none;
   cursor: pointer;
