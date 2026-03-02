@@ -29,6 +29,28 @@
   let lastFetchedUrl = '';
   let isAutoFetching = false;
 
+  // Filter state
+  let filterQuery = '';
+
+  function trackMatchesFilter(track, q) {
+    if (!q) return true;
+    const lower = q.toLowerCase();
+    if (track.name && String(track.name).toLowerCase().includes(lower)) return true;
+    if (!track.matches || !Array.isArray(track.matches)) return false;
+    for (const match of track.matches) {
+      if (match.name && String(match.name).toLowerCase().includes(lower)) return true;
+      if (match.tag && String(match.tag).toLowerCase().includes(lower)) return true;
+      if (match.area_type_tag && String(match.area_type_tag).toLowerCase().includes(lower)) return true;
+    }
+    return false;
+  }
+
+  $: filteredTracks = soundtrackData.tracks
+    ? soundtrackData.tracks
+        .map((track, index) => ({ track, index }))
+        .filter(({ track }) => !filterQuery.trim() || trackMatchesFilter(track, filterQuery.trim()))
+    : [];
+
   onMount(async () => {
     await loadSoundtrackData();
   });
@@ -209,14 +231,9 @@
   }
 
   async function autocompleteSearch(query, type) {
-    if (!query || query.length < 2) {
-      autocompleteSuggestions = [];
-      showAutocomplete = false;
-      return;
-    }
-
     try {
-      const results = await ipcRenderer.invoke('getWorldAreasData', type, query);
+      const q = query == null ? '' : String(query);
+      const results = await ipcRenderer.invoke('getWorldAreasData', type, q);
       autocompleteSuggestions = results;
       showAutocomplete = results.length > 0;
     } catch (err) {
@@ -361,8 +378,38 @@
 
   <!-- Tracks List -->
   <div class="flex-1 flex flex-col min-h-0 mb-4">
+    <div class="flex items-center gap-2 mb-2 flex-shrink-0">
+      <div class="relative flex-1 min-w-0 flex items-center">
+        <input
+          type="text"
+          bind:value={filterQuery}
+          class="w-full bronze-input pr-8"
+          placeholder="Filter by track name, area, type or tag"
+          aria-label="Filter tracks"
+          on:keydown={(e) => e.key === 'Escape' && (filterQuery = '')}
+        />
+        {#if filterQuery.trim()}
+          <button
+            type="button"
+            on:click={() => (filterQuery = '')}
+            class="absolute right-1 p-1 rounded text-bronze-title hover:text-bronze-buttonHover hover:bg-bronze-bg"
+            title="Clear filter"
+            aria-label="Clear filter"
+          >
+            <i class="material-icons text-lg">close</i>
+          </button>
+        {/if}
+      </div>
+    </div>
     <div class="flex items-center justify-between mb-2 flex-shrink-0">
-      <h3 class="bronze-section-header text-xl">Tracks ({soundtrackData.tracks.length})</h3>
+      <h3 class="bronze-section-header text-xl">
+        Tracks
+        {#if filterQuery.trim()}
+          ({filteredTracks.length} of {soundtrackData.tracks.length})
+        {:else}
+          ({soundtrackData.tracks.length})
+        {/if}
+      </h3>
       <button
         on:click={openAddTrackModal}
         class="bronze-btn-primary"
@@ -372,7 +419,7 @@
       </button>
     </div>
     <div class="flex-1 overflow-y-auto overflow-x-hidden space-y-2">
-      {#each soundtrackData.tracks as track, index}
+      {#each filteredTracks as { track, index }}
         <div class="rounded border border-bronze-border bg-bronze-panel min-w-0">
           <!-- Track Header (always visible) -->
           <div class="p-3">
@@ -444,13 +491,14 @@
                         type="text"
                         bind:value={matchInputValue}
                         on:input={(e) => handleMatchInputChange(e.target.value)}
+                        on:focus={() => autocompleteSearch(matchInputValue, matchSearchType)}
                         on:keydown={(e) => {
                           if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
                             selectAutocompleteSuggestion(autocompleteSuggestions[0]);
                           }
                         }}
                         class="flex-1 bronze-input min-w-0"
-                        placeholder="Search and add match..."
+                        placeholder="Search or click to browse…"
                       />
                     </div>
                     {#if showAutocomplete && autocompleteSuggestions.length > 0}
@@ -507,7 +555,13 @@
           </div>
         </div>
       {:else}
-        <div class="text-bronze-label/80 text-center py-4">No tracks yet. Click "Add Track" to get started.</div>
+        <div class="text-bronze-label/80 text-center py-4">
+          {#if soundtrackData.tracks.length === 0}
+            No tracks yet. Click "Add Track" to get started.
+          {:else}
+            No tracks match the filter.
+          {/if}
+        </div>
       {/each}
     </div>
   </div>
@@ -651,13 +705,14 @@
                 type="text"
                 bind:value={matchInputValue}
                 on:input={(e) => handleMatchInputChange(e.target.value)}
+                on:focus={() => autocompleteSearch(matchInputValue, matchSearchType)}
                 on:keydown={(e) => {
                   if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
                     selectAutocompleteSuggestion(autocompleteSuggestions[0]);
                   }
                 }}
                 class="flex-1 bronze-input min-w-0"
-                placeholder="Search and add match..."
+                placeholder="Search or click to browse…"
               />
             </div>
             {#if showAutocomplete && autocompleteSuggestions.length > 0}

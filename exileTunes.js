@@ -930,7 +930,8 @@ function run(browserWindow) {
     }
 
     const results = [];
-    const queryLower = query.toLowerCase();
+    const queryLower = (query && String(query).toLowerCase()) || '';
+    const isEmptyQuery = !queryLower;
     const maxResults = 50; // Limit results for performance
 
     for (const zoneId in worldAreas) {
@@ -943,33 +944,37 @@ function run(browserWindow) {
       let displayValue = '';
 
       if (searchType === 'name') {
-        if (zone.name && zone.name.toLowerCase().includes(queryLower)) {
-          matches = true;
-          displayValue = zone.name;
+        if (zone.name) {
+          matches = isEmptyQuery || zone.name.toLowerCase().includes(queryLower);
+          if (matches) displayValue = zone.name;
         }
       } else if (searchType === 'tag') {
         if (Array.isArray(zone.tags)) {
           for (const tag of zone.tags) {
-            if (tag && tag.toLowerCase().includes(queryLower)) {
-              matches = true;
-              displayValue = tag;
-              break;
+            if (tag) {
+              matches = isEmptyQuery || tag.toLowerCase().includes(queryLower);
+              if (matches) {
+                displayValue = tag;
+                break;
+              }
             }
           }
         }
       } else if (searchType === 'area_type_tag') {
         if (Array.isArray(zone.area_type_tags)) {
           for (const areaTypeTag of zone.area_type_tags) {
-            if (areaTypeTag && areaTypeTag.toLowerCase().includes(queryLower)) {
-              matches = true;
-              displayValue = areaTypeTag;
-              break;
+            if (areaTypeTag) {
+              matches = isEmptyQuery || areaTypeTag.toLowerCase().includes(queryLower);
+              if (matches) {
+                displayValue = areaTypeTag;
+                break;
+              }
             }
           }
         }
       }
 
-      if (matches && !results.some(r => r.value === displayValue)) {
+      if (matches && displayValue && !results.some(r => r.value === displayValue)) {
         results.push({
           value: displayValue,
           type: searchType
