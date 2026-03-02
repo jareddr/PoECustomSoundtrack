@@ -1,8 +1,8 @@
 # Exile Tunes
 
-![](pietyd2.png)
+![](exile_tunes.png)
 
-Updated for Crucible 3.21
+Updated for Mirage 3.28
 
 Usage and customization guide here: https://www.youtube.com/watch?v=DyfBy1K1Y1s
 
@@ -16,11 +16,25 @@ I did **not** build this because I think the Path of Exile soundtrack is bad, in
 
 ## To Use
 
-Load up the program, use the crappy interface to choose the folder where you installed Path of Exile. Don't worry, it doesn't write any files, it just reads the `Path of Exile/Logs/Client.txt` file to detect when your in game area changes.
+Load up the program, use the ~~crappy~~ amazing interface to choose the folder where you installed Path of Exile. Don't worry, it doesn't write any files, it just reads the `Path of Exile/Logs/Client.txt` file to detect when your in game area changes.
 
-Turn your in game music volume down to 0
+Turn your in game music volume down to 0 and enable gameplay event choices. 
 
-Switch areas in game, you should be hearing Diablo II music!
+Switch areas in game, you should be hearing Diablo II music.
+
+Keep the d2 soundtrack or make your own with the new soundtrack editor.  Add tracks from youtube and assign them to tilesets or specific zones.  
+
+## What's with the interface?
+
+I learned to program back in the AOL days where as a teen when 'proggies' were companion programs to get up to digital mischief, like distributing warez and kicking your nemeses offline.  This was also the era where you used Winamp to listen to mp3s.  If you were like me, you probably spent an inordinate amount of time finding the perfect winamp skin and then changing it again the next day.
+
+The new Exile Tunes interface is my homage to a nostalgic era of apps brought forward to join with my love of Path of Exile.
+
+## AI?
+
+The original version of this program was written well before anyone knew what an LLM or diffusion model was.  That said, I made heavy use of a coding agent in the most recent updates where I modernized the stack and added new features like the soundtrack editor.
+
+I also used AI for the art work.
 
 ## Download
 
@@ -57,7 +71,7 @@ If anyone wants to contribute by adding features, making improvements or fixing 
 
 3. Run the app in development mode:
    ```bash
-   npm start
+   npm run electron:dev
    ```
 
    This will launch the app with DevTools open and hot-reload enabled.
@@ -163,7 +177,6 @@ The auto-update system requires:
 - Check that all dependencies installed correctly
 
 **Port already in use:**
-- The app tries ports 3000-3010 automatically
 - Close other applications using these ports
 - Or modify the port range in `main.js` if needed
 
@@ -185,16 +198,3 @@ The auto-update system requires:
 - Check that `latest.yml` and installer files are in the GitHub release
 - Ensure the app was built with `electron-builder` (not manually)
 - Check the app logs (stored in user data directory) for update errors
-
-### Runtime Issues
-
-**App crashes on startup:**
-- Check the console output for error messages
-- Verify all required files are present (soundtrack files, etc.)
-- Check that the PoE log file path is correct
-
-**Updates not detected:**
-- Verify the GitHub release is published and public
-- Check that the version in `package.json` is lower than the release version
-- Ensure you have an internet connection
-- Check auto-updater logs in the app's user data directory

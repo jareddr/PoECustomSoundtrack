@@ -1,6 +1,6 @@
 {
   "name": "ExileTunes",
-  "version": "1.6.1",
+  "version": "1.9.9",
   "description": "A small app to replace path of exile music with that of diablo",
   "main": "main.js",
   "engines": {
@@ -30,7 +30,7 @@
     ],
     "win": {
       "publish": "github",
-      "icon": "pietyd2.ico",
+      "icon": "exiletunes.ico",
       "target": [
         "zip",
         "nsis"

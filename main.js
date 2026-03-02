@@ -151,7 +151,7 @@ function createWindow() {
     minimizable: true,
     maximizable: false,
     title: `Exile Tunes v${version}`,
-    icon: './pietyd2.ico',
+    icon: './exiletunes.ico',
     webPreferences: {
       nodeIntegration: true,
       nodeIntegrationInWorker: true,
@@ -200,7 +200,7 @@ function createEditorWindow() {
     minimizable: true,
     maximizable: true,
     title: `Edit Soundtrack - Exile Tunes v${version}`,
-    icon: './pietyd2.ico',
+    icon: './exiletunes.ico',
     webPreferences: {
       nodeIntegration: true,
       nodeIntegrationInWorker: true,
