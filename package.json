@@ -1,5 +1,5 @@
 {
-  "name": "PoECustomSoundtrack",
+  "name": "ExileTunes",
   "version": "1.6.1",
   "description": "A small app to replace path of exile music with that of diablo",
   "main": "main.js",
@@ -17,11 +17,11 @@
     "dist": "npm run build && electron-builder"
   },
   "build": {
-    "appId": "PoECustomSoundtrack",
+    "appId": "ExileTunes",
     "asar": "true",
     "files": [
       "main.js",
-      "poeCustomSoundtrack.js",
+      "exileTunes.js",
       "bosses.js",
       "defaults.js",
       "package.json",

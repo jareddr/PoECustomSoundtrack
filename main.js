@@ -1,5 +1,5 @@
 const electron = require('electron');
-const poeCustomSoundtrack = require('./poeCustomSoundtrack.js');
+const exileTunes = require('./exileTunes.js');
 const { autoUpdater } = require('electron-updater');
 const { version } = require('./package.json');
 const http = require('http');
@@ -150,7 +150,7 @@ function createWindow() {
     resizable: false,
     minimizable: true,
     maximizable: false,
-    title: `PoE Custom Soundtrack v${version}`,
+    title: `Exile Tunes v${version}`,
     icon: './pietyd2.ico',
     webPreferences: {
       nodeIntegration: true,
@@ -173,7 +173,7 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  poeCustomSoundtrack.run(mainWindow);
+  exileTunes.run(mainWindow);
 
   // Emitted when the window is closed
   mainWindow.on('closed', () => {
@@ -199,7 +199,7 @@ function createEditorWindow() {
     resizable: true,
     minimizable: true,
     maximizable: true,
-    title: `Edit Soundtrack - PoE Custom Soundtrack v${version}`,
+    title: `Edit Soundtrack - Exile Tunes v${version}`,
     icon: './pietyd2.ico',
     webPreferences: {
       nodeIntegration: true,
@@ -398,11 +398,11 @@ app.on('activate', () => {
 
 // Auto-updater event handlers
 autoUpdater.on('update-available', (info) => {
-  poeCustomSoundtrack.updateAvailable(autoUpdater);
+  exileTunes.updateAvailable(autoUpdater);
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
-  poeCustomSoundtrack.updateDownloading();
+  exileTunes.updateDownloading();
 });
 
 autoUpdater.on('update-downloaded', (info) => {

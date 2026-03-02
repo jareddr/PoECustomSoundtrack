@@ -53,11 +53,13 @@
   }
 
   .bronze-label {
-    @apply font-pica text-bronze-label;
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply text-bronze-label;
   }
 
   .bronze-btn-primary {
-    @apply rounded px-3 py-1.5 font-pica font-bold text-sm cursor-pointer border border-bronze-border bg-bronze-button text-bronze-buttonText transition-colors;
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-3 py-1.5 font-bold text-sm cursor-pointer border border-bronze-border bg-bronze-button text-bronze-buttonText transition-colors;
   }
 
   .bronze-btn-primary:hover {
@@ -65,15 +67,30 @@
   }
 
   .bronze-btn-secondary {
-    @apply rounded px-3 py-1.5 font-pica font-bold text-sm cursor-pointer border border-bronze-border bg-bronze-panel text-bronze-title transition-colors;
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-3 py-1.5 font-bold text-sm cursor-pointer border border-bronze-border bg-bronze-panel text-bronze-title transition-colors;
   }
 
   .bronze-btn-secondary:hover {
     @apply text-bronze-buttonHover border-bronze-buttonHover;
   }
 
+  .bronze-btn-accent {
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-3 py-1.5 font-bold text-sm cursor-pointer border transition-colors;
+    background-color: #0ba5a5;
+    color: #1F1A12;
+    border-color: #0e8a8a;
+  }
+
+  .bronze-btn-accent:hover {
+    background-color: #0dbfbf;
+    border-color: #0ba5a5;
+  }
+
   .bronze-input {
-    @apply rounded px-2 py-1 text-sm font-pica bg-bronze-panel text-bronze-label border border-bronze-border;
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-2 py-1 text-sm bg-bronze-panel text-bronze-label border border-bronze-border;
   }
 
   .bronze-input::placeholder {
@@ -81,7 +98,8 @@
   }
 
   .bronze-select {
-    @apply rounded px-2 py-1 text-sm font-pica appearance-none cursor-pointer bg-bronze-panel text-bronze-label border border-bronze-border;
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-2 py-1 text-sm appearance-none cursor-pointer bg-bronze-panel text-bronze-label border border-bronze-border;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23B08B57'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
     background-size: 1rem;
     background-repeat: no-repeat;

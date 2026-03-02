@@ -1,4 +1,4 @@
-# Path of Exile Custom Soundtrack
+# Exile Tunes
 
 ![](pietyd2.png)
 

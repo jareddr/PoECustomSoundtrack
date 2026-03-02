@@ -513,36 +513,38 @@
   </div>
 
   <!-- Save / Load Buttons -->
-  <div class="flex gap-2 justify-end flex-shrink-0">
+  <div class="flex gap-2 justify-between items-center flex-shrink-0">
     <button
       on:click={loadSoundtrackFile}
-      class="bronze-btn-secondary"
+      class="bronze-btn-accent"
       disabled={saving || editingTrackIndex !== null}
       title="Load a different soundtrack file"
     >
       Load
     </button>
-    <button
-      on:click={onClose}
-      class="bronze-btn-secondary"
-      disabled={saving || editingTrackIndex !== null}
-    >
-      Cancel
-    </button>
-    <button
-      on:click={saveSoundtrack}
-      class="bronze-btn-primary"
-      disabled={saving || editingTrackIndex !== null}
-    >
-      {saving ? 'Saving...' : 'Save'}
-    </button>
-    <button
-      on:click={saveSoundtrackAs}
-      class="bronze-btn-secondary"
-      disabled={saving || editingTrackIndex !== null}
-    >
-      {saving ? 'Saving...' : 'Save As'}
-    </button>
+    <div class="flex gap-2">
+      <button
+        on:click={onClose}
+        class="bronze-btn-secondary"
+        disabled={saving || editingTrackIndex !== null}
+      >
+        Cancel
+      </button>
+      <button
+        on:click={saveSoundtrack}
+        class="bronze-btn-primary"
+        disabled={saving || editingTrackIndex !== null}
+      >
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+      <button
+        on:click={saveSoundtrackAs}
+        class="bronze-btn-secondary"
+        disabled={saving || editingTrackIndex !== null}
+      >
+        {saving ? 'Saving...' : 'Save As'}
+      </button>
+    </div>
   </div>
 </div>
 
