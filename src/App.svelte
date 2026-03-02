@@ -127,11 +127,8 @@
     }
   }
 
-  async function loadSoundtrackFile() {
-    const results = await ipcRenderer.invoke('open-file-dialog');
-    if (results && !results.canceled && results.filePaths) {
-      ipcRenderer.send('setSoundtrack', results.filePaths);
-    }
+  function minimizeWindow() {
+    ipcRenderer.send('minimize-window');
   }
 
   // Update volume immediately for smooth dragging (local only, no IPC)
@@ -299,14 +296,14 @@
   style="background-image: url(/mirror.png); background-size: cover; background-position: center;"
 >
   <!-- Decorative Buttons -->
-  <!-- Top Left Button (70px) - Load Folder -->
+  <!-- Top Left Button (70px) - Minimize -->
   <button
-    on:click={loadSoundtrackFile}
+    on:click={minimizeWindow}
     class="decorative-button button-top-left no-drag"
-    title="Load Soundtrack"
+    title="Minimize"
   >
     <div class="button-bg"></div>
-    <i class="material-icons button-icon">folder</i>
+    <i class="material-icons button-icon">minimize</i>
   </button>
 
   <!-- Top Center Button (70px) - Settings -->
@@ -361,15 +358,7 @@
   <!-- Soundtrack Selection at Top (hidden, replaced by decorative buttons) -->
   <div class="absolute top-2 left-2 z-50 no-drag" style="display: none;">
     <div class="flex items-center gap-2">
-      <button type="button" class="d2button" on:click={loadSoundtrackFile}>...</button>
-      <button
-        type="button"
-        class="text-xs truncate cursor-pointer hover:text-d2-text-hover px-2 py-1 text-left max-w-[150px]"
-        on:click={loadSoundtrackFile}
-        title={soundtrackName}
-      >
-        {soundtrackName}
-      </button>
+      <span class="text-xs truncate px-2 py-1 max-w-[150px]" title={soundtrackName}>{soundtrackName}</span>
       <button
         type="button"
         class="d2button btn-secondary"
@@ -392,7 +381,7 @@
       </div>
 
       <!-- Right Side: Zone and Track Info -->
-      <div class="flex flex-col gap-4 flex-1 border-red-500 border-0 pt-4 w-[175px] overflow-hidden">
+      <div class="flex flex-col gap-4 flex-1 border-red-500 border-0 pt-4 w-[175px] overflow-hidden font-pica">
         <div>
           <div class="text-lg font-exocet font-bold mb-2">Current Area</div>
           {#if currentZoneName}
@@ -465,43 +454,44 @@
     </div>
   {/if}
 
-  <!-- Settings Modal -->
+  <!-- Settings Modal (full window) -->
   {#if showSettings}
-    <!-- Fullscreen Modal -->
     <div
-      class="fixed inset-0 z-50 bg-bg-100 border-4 border-primary-200 p-6 overflow-y-auto no-drag"
+      class="fixed inset-0 z-50 no-drag bronze-panel overflow-y-auto p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-title"
     >
       <!-- Modal Header -->
-      <div class="flex items-center justify-between mb-4">
-        <h2 id="settings-title" class="text-2xl font-exocet font-bold text-text-100">Settings</h2>
-        <button
-          on:click={closeSettings}
-          class="p-1 hover:bg-bg-300 rounded transition-colors"
-          title="Close"
-        >
-          <i class="material-icons text-text-100">close</i>
-        </button>
-      </div>
+        <div class="flex items-center justify-between mb-6">
+          <h2 id="settings-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
+            Settings
+          </h2>
+          <button
+            on:click={closeSettings}
+            class="p-1 rounded transition-colors text-bronze-title hover:text-bronze-buttonHover"
+            title="Close"
+          >
+            <i class="material-icons">close</i>
+          </button>
+        </div>
 
-      <!-- Settings Content -->
-      <div class="space-y-4">
-        <!-- Path of Exile Directory Selection -->
-        <div class="bg-bg-200 p-4 rounded border border-bg-300">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-lg text-text-100">Select Path of Exile Directory</span>
+        <!-- Section: WINDOW -->
+        <div class="mb-6">
+          <div class="bronze-section-header mb-3">
+            <i class="material-icons text-lg" aria-hidden="true">computer</i>
+            Window
+          </div>
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="bronze-label text-base">Select Path of Exile Directory</span>
             <i
-              class="material-icons text-accent-100 {poePathValid ? 'inline' : 'hidden'}"
+              class="material-icons text-accent-100 flex-shrink-0 {poePathValid ? 'inline' : 'hidden'}"
               title="Path of Exile Detected!"
             >
               check_circle
             </i>
             <i
-              class="material-icons text-primary-100 cursor-pointer {!poePathValid
-                ? 'inline'
-                : 'hidden'}"
+              class="material-icons text-amber-400 flex-shrink-0 {!poePathValid ? 'inline' : 'hidden'}"
               title="Cannot locate path of exile client log."
             >
               error
@@ -510,12 +500,14 @@
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class="d2button bg-primary-200 hover:bg-primary-100 text-text-100 border-primary-300"
-              on:click={loadLogFile}>...</button
+              class="bronze-btn-primary flex-shrink-0"
+              on:click={loadLogFile}
             >
+              ...
+            </button>
             <button
               type="button"
-              class="text-sm flex-1 truncate cursor-pointer hover:text-text-200 px-2 py-1 text-left text-text-200"
+              class="bronze-label text-sm flex-1 truncate cursor-pointer hover:text-bronze-buttonHover px-2 py-1 text-left min-w-0"
               on:click={loadLogFile}
               title={poePath}
             >
@@ -524,54 +516,57 @@
           </div>
         </div>
 
-        <!-- Music Volume Check -->
-        <div class="bg-bg-200 p-4 rounded border border-bg-300">
-          <div class="flex items-center justify-between">
-            <span class="text-lg text-text-100">Turn off in game music</span>
-            <i
-              class="material-icons text-accent-100 {volumeValid ? 'inline' : 'hidden'}"
-              title="Checks out."
-            >
-              check_circle
-            </i>
-            <i
-              class="material-icons text-primary-100 cursor-pointer {!volumeValid
-                ? 'inline'
-                : 'hidden'}"
-              title="Set the music volume in game to 0 to avoid clashing tracks."
-            >
-              warning
-            </i>
-          </div>
-          <p class="text-sm text-text-200 mt-1">
-            Set the music volume in game to 0 to avoid clashing tracks.
-          </p>
-        </div>
+        <hr class="bronze-section-divider my-4" />
 
-        <!-- Character Event Voices Check -->
-        <div class="bg-bg-200 p-4 rounded border border-bg-300">
-          <div class="flex items-center justify-between">
-            <span class="text-lg text-text-100">Enable gameplay event voices</span>
-            <i
-              class="material-icons text-accent-100 {charEventValid ? 'inline' : 'hidden'}"
-              title="Checks out."
-            >
-              check_circle
-            </i>
-            <i
-              class="material-icons text-primary-100 cursor-pointer {!charEventValid
-                ? 'inline'
-                : 'hidden'}"
-              title="Enable gameplay event voices to enable boss music."
-            >
-              warning
-            </i>
+        <!-- Section: GAME / PLAYBACK -->
+        <div class="mb-6">
+          <div class="bronze-section-header mb-3">
+            <i class="material-icons text-lg" aria-hidden="true">volume_up</i>
+            Game
           </div>
-          <p class="text-sm text-text-200 mt-1">
-            Enable gameplay event voices to enable boss music.
-          </p>
+          <div class="space-y-4">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="bronze-label text-base">Turn off in game music</span>
+                <i
+                  class="material-icons text-accent-100 flex-shrink-0 {volumeValid ? 'inline' : 'hidden'}"
+                  title="Checks out."
+                >
+                  check_circle
+                </i>
+                <i
+                  class="material-icons text-amber-400 flex-shrink-0 {!volumeValid ? 'inline' : 'hidden'}"
+                  title="Set the music volume in game to 0 to avoid clashing tracks."
+                >
+                  warning
+                </i>
+              </div>
+              <p class="bronze-label text-sm mt-1 opacity-90">
+                Set the music volume in game to 0 to avoid clashing tracks.
+              </p>
+            </div>
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="bronze-label text-base">Enable gameplay event voices</span>
+                <i
+                  class="material-icons text-accent-100 flex-shrink-0 {charEventValid ? 'inline' : 'hidden'}"
+                  title="Checks out."
+                >
+                  check_circle
+                </i>
+                <i
+                  class="material-icons text-amber-400 flex-shrink-0 {!charEventValid ? 'inline' : 'hidden'}"
+                  title="Enable gameplay event voices to enable boss music."
+                >
+                  warning
+                </i>
+              </div>
+              <p class="bronze-label text-sm mt-1 opacity-90">
+                Enable gameplay event voices to enable boss music.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
     </div>
   {/if}
 </div>

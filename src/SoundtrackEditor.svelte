@@ -78,6 +78,20 @@
     }
   }
 
+  async function loadSoundtrackFile() {
+    try {
+      const result = await ipcRenderer.invoke('open-file-dialog');
+      if (result && !result.canceled && result.filePaths && result.filePaths[0]) {
+        ipcRenderer.send('setSoundtrack', result.filePaths);
+        await loadSoundtrackData();
+        errorMessage = '';
+      }
+    } catch (err) {
+      console.error('Error loading soundtrack file:', err);
+      errorMessage = 'Failed to load soundtrack file';
+    }
+  }
+
   async function getYouTubeTitle(videoUrl) {
     try {
       loadingYouTube = true;
@@ -328,17 +342,19 @@
 <svelte:window on:click={handleClickOutside} />
 
 <div 
-  class="h-screen flex flex-col bg-bg-100 p-6 font-sans text-text-100 overflow-hidden"
+  class="h-screen flex flex-col bg-bronze-bg p-6 font-pica text-bronze-label overflow-hidden"
   role="main"
   aria-labelledby="editor-title"
 >
   <!-- Header -->
   <div class="flex items-center mb-4 flex-shrink-0">
-    <h2 id="editor-title" class="text-2xl font-exocet font-bold text-text-100">Edit Soundtrack</h2>
+    <h2 id="editor-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
+      Edit Soundtrack
+    </h2>
   </div>
 
   {#if errorMessage}
-    <div class="mb-4 p-2 bg-primary-300 border border-primary-100 text-text-100 text-sm flex-shrink-0">
+    <div class="mb-4 p-2 rounded border border-bronze-border bg-bronze-panel text-bronze-label text-sm flex-shrink-0">
       {errorMessage}
     </div>
   {/if}
@@ -346,10 +362,10 @@
   <!-- Tracks List -->
   <div class="flex-1 flex flex-col min-h-0 mb-4">
     <div class="flex items-center justify-between mb-2 flex-shrink-0">
-      <h3 class="text-xl font-exocet font-bold">Tracks ({soundtrackData.tracks.length})</h3>
+      <h3 class="bronze-section-header text-xl">Tracks ({soundtrackData.tracks.length})</h3>
       <button
         on:click={openAddTrackModal}
-        class="d2button bg-primary-200 hover:bg-primary-100 text-text-100 border-primary-300"
+        class="bronze-btn-primary"
         disabled={editingTrackIndex !== null || showAddTrackModal}
       >
         Add Track
@@ -357,16 +373,16 @@
     </div>
     <div class="flex-1 overflow-y-auto overflow-x-hidden space-y-2">
       {#each soundtrackData.tracks as track, index}
-        <div class="bg-bg-200 rounded border border-bg-300 min-w-0">
+        <div class="rounded border border-bronze-border bg-bronze-panel min-w-0">
           <!-- Track Header (always visible) -->
           <div class="p-3">
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-base truncate text-text-100" title={track.name}>{track.name}</div>
-              <div class="text-sm text-text-200 truncate" title={track.location}>{track.location}</div>
+              <div class="font-bold text-base truncate text-bronze-label" title={track.name}>{track.name}</div>
+              <div class="text-sm text-bronze-label/80 truncate" title={track.location}>{track.location}</div>
               {#if track.matches.length > 0}
                 <div class="flex flex-wrap gap-1 mt-1">
                   {#each track.matches as match}
-                    <span class="text-xs text-text-200/70 bg-bg-300 px-1.5 py-0.5 rounded border border-bg-300">
+                    <span class="text-xs text-bronze-label/70 bg-bronze-bg px-1.5 py-0.5 rounded border border-bronze-border/50">
                       {getMatchPillLabel(match)}: {getMatchPillValue(match)}
                     </span>
                   {/each}
@@ -377,36 +393,36 @@
 
           <!-- Edit Form (expanded when editing) -->
           {#if editingTrackIndex === index && editingTrack}
-            <div class="px-3 pb-3 pt-0 space-y-3 border-t border-bg-300 mt-2">
+            <div class="px-3 pb-3 pt-0 space-y-3 border-t border-bronze-border/50 mt-2">
               <div>
-                <label for="edit-track-name-{index}" class="block text-sm mb-1 text-text-100">Track Name</label>
+                <label for="edit-track-name-{index}" class="block text-sm mb-1 bronze-label">Track Name</label>
                 <input
                   id="edit-track-name-{index}"
                   type="text"
                   bind:value={editingTrack.name}
-                  class="w-full bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 placeholder:text-text-200/50"
+                  class="w-full bronze-input"
                   placeholder="Track name"
                 />
               </div>
               <div>
-                <label for="edit-track-url-{index}" class="block text-sm mb-1 text-text-100">YouTube URL</label>
+                <label for="edit-track-url-{index}" class="block text-sm mb-1 bronze-label">YouTube URL</label>
                 <input
                   id="edit-track-url-{index}"
                   type="text"
                   bind:value={editingTrack.location}
-                  class="w-full bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 placeholder:text-text-200/50"
+                  class="w-full bronze-input"
                   placeholder="https://www.youtube.com/watch?v=..."
                 />
               </div>
               <div>
-                <label for="edit-track-matches-{index}" class="block text-sm mb-1 text-text-100">Matches Area</label>
+                <label for="edit-track-matches-{index}" class="block text-sm mb-1 bronze-label">Matches Area</label>
                 <div class="space-y-2">
                   {#each editingTrack.matches as match, matchIndex}
-                    <div class="flex items-center justify-between bg-bg-300 p-2 rounded border border-bg-300">
-                      <span class="text-sm text-text-100">{getMatchDisplay(match)}</span>
+                    <div class="flex items-center justify-between bg-bronze-bg p-2 rounded border border-bronze-border/50">
+                      <span class="text-sm bronze-label">{getMatchDisplay(match)}</span>
                       <button
                         on:click={() => removeMatch(editingTrackIndex, matchIndex)}
-                        class="text-primary-100 hover:text-primary-200 text-sm"
+                        class="text-bronze-title hover:text-bronze-buttonHover text-sm"
                         title="Remove match"
                       >
                         <i class="material-icons text-base">delete</i>
@@ -418,12 +434,11 @@
                     <div class="flex gap-2 mb-2">
                       <select
                         bind:value={matchSearchType}
-                        class="bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 text-sm"
-                        style="background-color: #353535; color: #FFFFFF;"
+                        class="bronze-select flex-1 min-w-0"
                       >
-                        <option value="name" style="background-color: #353535; color: #FFFFFF;">Name</option>
-                        <option value="tag" style="background-color: #353535; color: #FFFFFF;">Tag</option>
-                        <option value="area_type_tag" style="background-color: #353535; color: #FFFFFF;">Area Type</option>
+                        <option value="name">Name</option>
+                        <option value="tag">Tag</option>
+                        <option value="area_type_tag">Area Type</option>
                       </select>
                       <input
                         type="text"
@@ -434,16 +449,16 @@
                             selectAutocompleteSuggestion(autocompleteSuggestions[0]);
                           }
                         }}
-                        class="flex-1 bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 placeholder:text-text-200/50"
+                        class="flex-1 bronze-input min-w-0"
                         placeholder="Search and add match..."
                       />
                     </div>
                     {#if showAutocomplete && autocompleteSuggestions.length > 0}
-                      <div class="absolute z-10 w-full bg-bg-200 border border-bg-300 max-h-48 overflow-y-auto">
+                      <div class="absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded">
                         {#each autocompleteSuggestions as suggestion}
                           <button
                             on:click={() => selectAutocompleteSuggestion(suggestion)}
-                            class="w-full text-left px-2 py-1 hover:bg-bg-300 text-sm text-text-100"
+                            class="w-full text-left px-2 py-1 hover:bg-bronze-bg text-sm bronze-label"
                           >
                             {suggestion.value}
                           </button>
@@ -457,18 +472,18 @@
           {/if}
 
           <!-- Action Buttons (bottom right) -->
-          <div class="px-3 pb-3 pt-2 flex justify-end gap-2 border-t border-bg-300">
+          <div class="px-3 pb-3 pt-2 flex justify-end gap-2 border-t border-bronze-border/50">
             {#if editingTrackIndex === index}
               <button
                 on:click={saveEditTrack}
-                class="d2button bg-primary-200 hover:bg-primary-100 text-text-100 border-primary-300 text-xs"
+                class="bronze-btn-primary text-xs"
                 disabled={loadingYouTube || saving}
               >
                 Save
               </button>
               <button
                 on:click={cancelEditTrack}
-                class="d2button bg-bg-300 hover:bg-bg-200 text-text-100 border-bg-300 text-xs"
+                class="bronze-btn-secondary text-xs"
                 disabled={loadingYouTube || saving}
               >
                 Cancel
@@ -476,14 +491,14 @@
             {:else}
               <button
                 on:click={() => startEditTrack(index)}
-                class="d2button bg-bg-300 hover:bg-bg-200 text-text-100 border-bg-300 text-xs"
+                class="bronze-btn-secondary text-xs"
                 disabled={editingTrackIndex !== null}
               >
                 Edit
               </button>
               <button
                 on:click={() => deleteTrack(index)}
-                class="d2button bg-primary-200 hover:bg-primary-100 text-text-100 border-primary-300 text-xs"
+                class="bronze-btn-primary text-xs"
                 disabled={editingTrackIndex !== null}
               >
                 Delete
@@ -492,30 +507,38 @@
           </div>
         </div>
       {:else}
-        <div class="text-text-200 text-center py-4">No tracks yet. Click "Add Track" to get started.</div>
+        <div class="text-bronze-label/80 text-center py-4">No tracks yet. Click "Add Track" to get started.</div>
       {/each}
     </div>
   </div>
 
-  <!-- Save Buttons -->
+  <!-- Save / Load Buttons -->
   <div class="flex gap-2 justify-end flex-shrink-0">
     <button
+      on:click={loadSoundtrackFile}
+      class="bronze-btn-secondary"
+      disabled={saving || editingTrackIndex !== null}
+      title="Load a different soundtrack file"
+    >
+      Load
+    </button>
+    <button
       on:click={onClose}
-      class="d2button bg-bg-300 hover:bg-bg-200 text-text-100 border-bg-300"
+      class="bronze-btn-secondary"
       disabled={saving || editingTrackIndex !== null}
     >
       Cancel
     </button>
     <button
       on:click={saveSoundtrack}
-      class="d2button bg-primary-200 hover:bg-primary-100 text-text-100 border-primary-300"
+      class="bronze-btn-primary"
       disabled={saving || editingTrackIndex !== null}
     >
       {saving ? 'Saving...' : 'Save'}
     </button>
     <button
       on:click={saveSoundtrackAs}
-      class="d2button bg-bg-300 hover:bg-bg-200 text-text-100 border-bg-300"
+      class="bronze-btn-secondary"
       disabled={saving || editingTrackIndex !== null}
     >
       {saving ? 'Saving...' : 'Save As'}
@@ -525,132 +548,147 @@
 
 <!-- Add Track Modal -->
 {#if showAddTrackModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div 
-    class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center"
+    class="fixed inset-0 z-50 flex items-center justify-center p-6 bronze-overlay bg-black/60"
     on:click={closeAddTrackModal}
     on:keydown={(e) => e.key === 'Escape' && closeAddTrackModal()}
-    role="button"
-    tabindex="-1"
-    aria-label="Close modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="add-track-title"
   >
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div 
-      class="bg-bg-100 border-4 border-primary-200 p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+      class="bronze-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 mx-4"
       on:click|stopPropagation
       on:keydown|stopPropagation
-      role="dialog"
-      aria-modal="true"
     >
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-2xl font-exocet font-bold text-text-100">Add New Track</h3>
+      <div class="flex items-center justify-between mb-6">
+        <h3 id="add-track-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
+          Add New Track
+        </h3>
         <button
           on:click={closeAddTrackModal}
-          class="p-1 hover:bg-bg-300 rounded transition-colors"
+          class="p-1 rounded transition-colors text-bronze-title hover:text-bronze-buttonHover"
           title="Close"
         >
-          <i class="material-icons text-text-100">close</i>
+          <i class="material-icons">close</i>
         </button>
       </div>
 
       {#if errorMessage}
-        <div class="mb-4 p-2 bg-primary-300 border border-primary-100 text-text-100 text-sm">
+        <div class="mb-4 p-2 rounded border border-bronze-border bg-bronze-panel text-bronze-label text-sm">
           {errorMessage}
         </div>
       {/if}
 
-      <div class="space-y-3">
-        <div>
-          <label class="block text-sm mb-1 text-text-100">YouTube URL {#if loadingYouTube || isAutoFetching}(Loading...){/if}</label>
-          <input
-            type="text"
-            bind:value={newTrackUrl}
-            class="w-full bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 placeholder:text-text-200/50"
-            placeholder="https://www.youtube.com/watch?v=..."
-            disabled={loadingYouTube || isAutoFetching}
-          />
+      <!-- Section: TRACK -->
+      <div class="mb-6">
+        <div class="bronze-section-header mb-3">
+          <i class="material-icons text-lg" aria-hidden="true">music_note</i>
+          Track
         </div>
-        <div>
-          <label class="block text-sm mb-1 text-text-100">Track Name</label>
-          <input
-            type="text"
-            bind:value={newTrackName}
-            class="w-full bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 placeholder:text-text-200/50"
-            placeholder="Track name"
-            disabled={loadingYouTube}
-          />
-        </div>
-        <div>
-          <label class="block text-sm mb-1 text-text-100">Matches Area</label>
-          <div class="space-y-2">
-            {#each newTrackMatches as match, matchIndex}
-              <div class="flex items-center justify-between bg-bg-200 p-2 rounded border border-bg-300">
-                <span class="text-sm text-text-100">{getMatchDisplay(match)}</span>
-                <button
-                  on:click={() => newTrackMatches = newTrackMatches.filter((_, i) => i !== matchIndex)}
-                  class="text-primary-100 hover:text-primary-200 text-sm"
-                  title="Remove match"
-                >
-                  <i class="material-icons text-base">delete</i>
-                </button>
-              </div>
-            {/each}
-            <!-- Match Input for Adding -->
-            <div class="autocomplete-container relative">
-              <div class="flex gap-2 mb-2">
-                <select
-                  bind:value={matchSearchType}
-                  class="bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 text-sm"
-                  style="background-color: #353535; color: #FFFFFF;"
-                >
-                  <option value="name" style="background-color: #353535; color: #FFFFFF;">Name</option>
-                  <option value="tag" style="background-color: #353535; color: #FFFFFF;">Tag</option>
-                  <option value="area_type_tag" style="background-color: #353535; color: #FFFFFF;">Area Type</option>
-                </select>
-                <input
-                  type="text"
-                  bind:value={matchInputValue}
-                  on:input={(e) => handleMatchInputChange(e.target.value)}
-                  on:keydown={(e) => {
-                    if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
-                      selectAutocompleteSuggestion(autocompleteSuggestions[0]);
-                    }
-                  }}
-                  class="flex-1 bg-bg-300 border border-bg-300 px-2 py-1 text-text-100 placeholder:text-text-200/50"
-                  placeholder="Search and add match..."
-                />
-              </div>
-              {#if showAutocomplete && autocompleteSuggestions.length > 0}
-                <div class="absolute z-10 w-full bg-bg-200 border border-bg-300 max-h-48 overflow-y-auto">
-                  {#each autocompleteSuggestions as suggestion}
-                    <button
-                      on:click={() => selectAutocompleteSuggestion(suggestion)}
-                      class="w-full text-left px-2 py-1 hover:bg-bg-300 text-sm text-text-100"
-                    >
-                      {suggestion.value}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
+        <div class="space-y-3">
+          <div>
+            <label for="add-track-url" class="block text-sm mb-1 bronze-label">YouTube URL {#if loadingYouTube || isAutoFetching}(Loading...){/if}</label>
+            <input
+              id="add-track-url"
+              type="text"
+              bind:value={newTrackUrl}
+              class="w-full bronze-input"
+              placeholder="https://www.youtube.com/watch?v=..."
+              disabled={loadingYouTube || isAutoFetching}
+            />
+          </div>
+          <div>
+            <label for="add-track-name" class="block text-sm mb-1 bronze-label">Track Name</label>
+            <input
+              id="add-track-name"
+              type="text"
+              bind:value={newTrackName}
+              class="w-full bronze-input"
+              placeholder="Track name"
+              disabled={loadingYouTube}
+            />
           </div>
         </div>
-        <div class="flex gap-2 justify-end">
-          <button
-            on:click={closeAddTrackModal}
-            class="d2button bg-bg-300 hover:bg-bg-200 text-text-100 border-bg-300"
-            disabled={loadingYouTube || saving}
-          >
-            Cancel
-          </button>
-          <button
-            on:click={addTrack}
-            class="d2button bg-primary-200 hover:bg-primary-100 text-text-100 border-primary-300"
-            disabled={loadingYouTube || saving || !newTrackUrl.trim()}
-          >
-            Add Track
-          </button>
+      </div>
+
+      <hr class="bronze-section-divider my-4" />
+
+      <!-- Section: MATCHES -->
+      <div class="mb-6">
+        <div class="bronze-section-header mb-3">
+          <i class="material-icons text-lg" aria-hidden="true">place</i>
+          Matches
         </div>
+        <div class="space-y-2">
+          {#each newTrackMatches as match, matchIndex}
+            <div class="flex items-center justify-between bg-bronze-bg p-2 rounded border border-bronze-border/50">
+              <span class="text-sm bronze-label">{getMatchDisplay(match)}</span>
+              <button
+                on:click={() => newTrackMatches = newTrackMatches.filter((_, i) => i !== matchIndex)}
+                class="text-bronze-title hover:text-bronze-buttonHover text-sm"
+                title="Remove match"
+              >
+                <i class="material-icons text-base">delete</i>
+              </button>
+            </div>
+          {/each}
+          <div class="autocomplete-container relative">
+            <div class="flex gap-2 mb-2">
+              <select
+                bind:value={matchSearchType}
+                class="bronze-select flex-1 min-w-0"
+              >
+                <option value="name">Name</option>
+                <option value="tag">Tag</option>
+                <option value="area_type_tag">Area Type</option>
+              </select>
+              <input
+                type="text"
+                bind:value={matchInputValue}
+                on:input={(e) => handleMatchInputChange(e.target.value)}
+                on:keydown={(e) => {
+                  if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
+                    selectAutocompleteSuggestion(autocompleteSuggestions[0]);
+                  }
+                }}
+                class="flex-1 bronze-input min-w-0"
+                placeholder="Search and add match..."
+              />
+            </div>
+            {#if showAutocomplete && autocompleteSuggestions.length > 0}
+              <div class="absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded">
+                {#each autocompleteSuggestions as suggestion}
+                  <button
+                    on:click={() => selectAutocompleteSuggestion(suggestion)}
+                    class="w-full text-left px-2 py-1 hover:bg-bronze-bg text-sm bronze-label"
+                  >
+                    {suggestion.value}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button
+          on:click={closeAddTrackModal}
+          class="bronze-btn-secondary"
+          disabled={loadingYouTube || saving}
+        >
+          Cancel
+        </button>
+        <button
+          on:click={addTrack}
+          class="bronze-btn-primary"
+          disabled={loadingYouTube || saving || !newTrackUrl.trim()}
+        >
+          Add Track
+        </button>
       </div>
     </div>
   </div>

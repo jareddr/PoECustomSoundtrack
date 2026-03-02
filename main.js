@@ -148,7 +148,7 @@ function createWindow() {
     transparent: true,
     backgroundColor: '#00000000',
     resizable: false,
-    minimizable: false,
+    minimizable: true,
     maximizable: false,
     title: `PoE Custom Soundtrack v${version}`,
     icon: './pietyd2.ico',
@@ -329,6 +329,13 @@ function setupIpcHandlers() {
     });
     // Quit the app
     app.quit();
+  });
+
+  // IPC handler for minimizing the main window
+  ipcMain.on('minimize-window', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.minimize();
+    }
   });
 }
 

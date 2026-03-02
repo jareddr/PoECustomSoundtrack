@@ -5,6 +5,7 @@ export default {
     extend: {
       fontFamily: {
         'exocet': ['Exocet Light', 'sans-serif'],
+        'pica': ['"IM Fell DW Pica"', 'Georgia', 'serif'],
       },
       colors: {
         'd2-button': '#858480',
@@ -34,6 +35,17 @@ export default {
           100: '#0F0F0F',
           200: '#1f1f1f',
           300: '#353535',
+        },
+        // Bronze/gold theme for settings and playlist editor (reference window look)
+        'bronze': {
+          bg: '#1F1A12',
+          panel: '#251F16',
+          border: '#B08B57',
+          title: '#B08B57',
+          label: '#CABDA7',
+          button: '#B08B57',
+          buttonHover: '#C9A86C',
+          buttonText: '#1F1A12',
         },
       },
       borderRadius: {
