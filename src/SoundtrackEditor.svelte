@@ -41,6 +41,7 @@
       if (match.name && String(match.name).toLowerCase().includes(lower)) return true;
       if (match.tag && String(match.tag).toLowerCase().includes(lower)) return true;
       if (match.area_type_tag && String(match.area_type_tag).toLowerCase().includes(lower)) return true;
+      if (match.boss && String(match.boss).toLowerCase().includes(lower)) return true;
     }
     return false;
   }
@@ -284,6 +285,7 @@
     if (match.name) return `Name: ${match.name}`;
     if (match.tag) return `Tag: ${match.tag}`;
     if (match.area_type_tag) return `Area Type: ${match.area_type_tag}`;
+    if (match.boss) return `Act Boss: ${match.boss}`;
     return 'Unknown';
   }
 
@@ -291,6 +293,7 @@
     if (match.name) return 'Area';
     if (match.tag) return 'Tag';
     if (match.area_type_tag) return 'Type';
+    if (match.boss) return 'Boss';
     return 'Unknown';
   }
 
@@ -298,6 +301,7 @@
     if (match.name) return match.name;
     if (match.tag) return match.tag;
     if (match.area_type_tag) return match.area_type_tag;
+    if (match.boss) return match.boss;
     return 'Unknown';
   }
 
@@ -481,11 +485,13 @@
                     <div class="flex gap-2 mb-2">
                       <select
                         bind:value={matchSearchType}
+                        on:change={() => matchSearchType === 'boss' && autocompleteSearch(matchInputValue, matchSearchType)}
                         class="bronze-select flex-1 min-w-0"
                       >
                         <option value="name">Name</option>
                         <option value="tag">Tag</option>
                         <option value="area_type_tag">Area Type</option>
+                        <option value="boss">Act Boss</option>
                       </select>
                       <input
                         type="text"
@@ -695,11 +701,13 @@
             <div class="flex gap-2 mb-2">
               <select
                 bind:value={matchSearchType}
+                on:change={() => matchSearchType === 'boss' && autocompleteSearch(matchInputValue, matchSearchType)}
                 class="bronze-select flex-1 min-w-0"
               >
                 <option value="name">Name</option>
                 <option value="tag">Tag</option>
                 <option value="area_type_tag">Area Type</option>
+                <option value="boss">Act Boss</option>
               </select>
               <input
                 type="text"

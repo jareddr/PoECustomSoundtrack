@@ -224,7 +224,7 @@ function getTrack(areaName) {
     if (!track.matches || !Array.isArray(track.matches)) {
       return false;
     }
-    return track.matches.some((match) => match.name === areaName);
+    return track.matches.some((match) => match.name === areaName || match.boss === areaName);
   });
 
   if (nameMatchTracks.length > 0) {
@@ -925,6 +925,26 @@ function run(browserWindow) {
 
   // IPC handler for getting world areas data for autocomplete
   ipcMain.handle('getWorldAreasData', (event, searchType, query) => {
+    if (String(searchType).toLowerCase() === 'boss') {
+      try {
+        if (!bosses || typeof bosses.dialog !== 'object') {
+          console.error('getWorldAreasData (boss): bosses.dialog not available');
+          return [];
+        }
+        const uniqueBosses = [...new Set(Object.values(bosses.dialog))].filter(Boolean).sort();
+        const queryLower = (query && String(query).toLowerCase()) || '';
+        const isEmptyQuery = !queryLower;
+        const maxResults = 50;
+        const filtered = isEmptyQuery
+          ? uniqueBosses.slice(0, maxResults)
+          : uniqueBosses.filter((name) => name.toLowerCase().includes(queryLower)).slice(0, maxResults);
+        return filtered.map((value) => ({ value, type: 'boss' }));
+      } catch (err) {
+        console.error('getWorldAreasData (boss):', err);
+        return [];
+      }
+    }
+
     if (!worldAreas) {
       return [];
     }
