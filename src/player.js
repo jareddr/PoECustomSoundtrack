@@ -12,6 +12,9 @@ const PLAYER_CONSTANTS = {
 const YOUTUBE_CONSTANTS = {
   PLAYER_HEIGHT: '170',
   PLAYER_WIDTH: '100%',
+  CONTAINER_ID: 'youtube-parent-container',
+  CONTAINER_POLL_INTERVAL_MS: 80,
+  CONTAINER_POLL_MAX_ATTEMPTS: 30,
 };
 
 /**
@@ -60,9 +63,16 @@ class PlayerController {
    * @param {Object} track - Track object with type, id, name, etc.
    * @param {number} startingPosition - Starting position in seconds
    */
-  setTrack(track, startingPosition) {
+  async setTrack(track, startingPosition) {
     // Use player pool for YouTube tracks
     if (track.type === 'youtube') {
+      try {
+        await this._waitForYoutubeContainer();
+      } catch {
+        // Container never appeared; avoid creating orphan players
+        return;
+      }
+
       console.log(`[PlayerController] Setting YouTube track: ${track.id || track.name || 'unknown'}, starting at ${startingPosition}s`);
       
       // Get the currently active YouTube player (if any)
@@ -250,6 +260,34 @@ class PlayerController {
   }
 
   /**
+   * Wait for the YouTube parent container to exist in the DOM (e.g. after Svelte mount).
+   * Polls until the element is found or max attempts reached.
+   * @returns {Promise<void>} Resolves when container exists; rejects after max attempts
+   */
+  _waitForYoutubeContainer() {
+    return new Promise((resolve, reject) => {
+      const containerId = YOUTUBE_CONSTANTS.CONTAINER_ID;
+      const intervalMs = YOUTUBE_CONSTANTS.CONTAINER_POLL_INTERVAL_MS;
+      const maxAttempts = YOUTUBE_CONSTANTS.CONTAINER_POLL_MAX_ATTEMPTS;
+      let attempts = 0;
+      const poll = () => {
+        if (document.getElementById(containerId)) {
+          resolve();
+          return;
+        }
+        attempts += 1;
+        if (attempts >= maxAttempts) {
+          console.warn(`[PlayerController] youtube-parent-container not found after ${maxAttempts} attempts; YouTube embed may not be visible`);
+          reject(new Error('YouTube container not found'));
+          return;
+        }
+        setTimeout(poll, intervalMs);
+      };
+      poll();
+    });
+  }
+
+  /**
    * Initialize a YouTube player instance
    * @param {number} index - Player index (1 or 2)
    * @param {string} containerId - Container ID for the player
@@ -432,6 +470,8 @@ class YoutubePlayer {
     const parentElement = document.getElementById(parentContainerId);
     if (parentElement) {
       parentElement.appendChild(div);
+    } else {
+      console.warn('[YoutubePlayer] youtube-parent-container not found; player will not be visible');
     }
     return div;
   }
