@@ -208,6 +208,24 @@ function createEditorWindow() {
     },
   });
 
+  // Intercept close immediately (before load) so X button / Alt+F4 always trigger our handler
+  const closeHandler = (event) => {
+    event.preventDefault();
+    if (editorWindow.webContents && !editorWindow.webContents.isDestroyed()) {
+      editorWindow.webContents.send('editor-close-requested');
+    }
+  };
+  editorWindow.on('close', closeHandler);
+
+  editorWindow.on('closed', () => {
+    editorWindow = null;
+  });
+
+  // Remove intercept so a programmatic close (Save/Discard) is not blocked
+  editorWindow._allowClose = () => {
+    editorWindow.removeListener('close', closeHandler);
+  };
+
   editorWindow.setMenu(null);
 
   // Load the editor - use Vite dev server in development, built files in production
@@ -217,16 +235,6 @@ function createEditorWindow() {
     editorWindow.loadURL(`http://${constants.SERVER.HOST}:${serverPort}/editor.html`);
   }
 
-  // Open the DevTools in development
-  if (isDevelopment) {
-    editorWindow.webContents.openDevTools();
-  }
-
-  // Emitted when the window is closed
-  editorWindow.on('closed', () => {
-    // Dereference the window object
-    editorWindow = null;
-  });
 }
 
 /**
@@ -308,9 +316,22 @@ function setupIpcHandlers() {
     }
   });
 
-  // IPC handler for closing editor window
+  // IPC handler for closing editor window (called by editor when user confirms close / Discard)
+  ipcMain.on('editor-close-confirmed', () => {
+    if (editorWindow && !editorWindow.isDestroyed()) {
+      if (typeof editorWindow._allowClose === 'function') {
+        editorWindow._allowClose();
+      }
+      editorWindow.close();
+    }
+  });
+
+  // Programmatic close from editor Cancel button (sends close-editor-window)
   ipcMain.handle('close-editor-window', () => {
     if (editorWindow && !editorWindow.isDestroyed()) {
+      if (typeof editorWindow._allowClose === 'function') {
+        editorWindow._allowClose();
+      }
       editorWindow.close();
     }
     return { success: true };

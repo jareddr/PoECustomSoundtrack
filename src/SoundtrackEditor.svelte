@@ -14,10 +14,14 @@
   let matchSearchType = 'name'; // 'name', 'tag', or 'area_type_tag'
   let autocompleteSuggestions = [];
   let showAutocomplete = false;
+  let autocompleteHighlightIndex = 0;
   let loadingYouTube = false;
   let saving = false;
   let errorMessage = '';
   let currentFilePath = '';
+
+  // Dirty tracking: snapshot of loaded/saved data for unsaved-changes detection
+  let originalDataJson = '';
 
   // Track form state
   let newTrackName = '';
@@ -46,6 +50,8 @@
     return false;
   }
 
+  $: isDirty = originalDataJson !== '' && JSON.stringify(soundtrackData) !== originalDataJson;
+
   $: filteredTracks = soundtrackData.tracks
     ? soundtrackData.tracks
         .map((track, index) => ({ track, index }))
@@ -54,6 +60,12 @@
 
   onMount(async () => {
     await loadSoundtrackData();
+    ipcRenderer.on('editor-close-requested', () => {
+      requestClose('window');
+    });
+    return () => {
+      ipcRenderer.removeAllListeners('editor-close-requested');
+    };
   });
 
   // Function to check if a string is a valid YouTube URL
@@ -95,6 +107,7 @@
       if (!soundtrackData.options) {
         soundtrackData.options = { randomOnNoMatch: false };
       }
+      originalDataJson = JSON.stringify(soundtrackData);
     } catch (err) {
       console.error('Error loading soundtrack data:', err);
       errorMessage = 'Failed to load soundtrack data';
@@ -220,15 +233,26 @@
     cancelEditTrack();
   }
 
-  function deleteTrack(index) {
-    if (confirm('Are you sure you want to delete this track?')) {
-      soundtrackData.tracks = soundtrackData.tracks.filter((_, i) => i !== index);
-      if (editingTrackIndex === index) {
-        cancelEditTrack();
-      } else if (editingTrackIndex > index) {
-        editingTrackIndex--;
-      }
+  function requestDeleteTrack(index) {
+    deleteTargetIndex = index;
+    showDeleteConfirm = true;
+  }
+
+  function cancelDeleteConfirm() {
+    showDeleteConfirm = false;
+    deleteTargetIndex = null;
+  }
+
+  function confirmDeleteTrack() {
+    if (deleteTargetIndex == null) return;
+    const index = deleteTargetIndex;
+    soundtrackData.tracks = soundtrackData.tracks.filter((_, i) => i !== index);
+    if (editingTrackIndex === index) {
+      cancelEditTrack();
+    } else if (editingTrackIndex > index) {
+      editingTrackIndex--;
     }
+    cancelDeleteConfirm();
   }
 
   async function autocompleteSearch(query, type) {
@@ -236,17 +260,45 @@
       const q = query == null ? '' : String(query);
       const results = await ipcRenderer.invoke('getWorldAreasData', type, q);
       autocompleteSuggestions = results;
-      showAutocomplete = results.length > 0;
+      showAutocomplete = true;
+      autocompleteHighlightIndex = results.length > 0 ? 0 : -1;
     } catch (err) {
       console.error('Error searching world areas:', err);
       autocompleteSuggestions = [];
       showAutocomplete = false;
+      autocompleteHighlightIndex = -1;
     }
   }
 
   function handleMatchInputChange(value) {
     matchInputValue = value;
     autocompleteSearch(value, matchSearchType);
+  }
+
+  function handleAutocompleteKeydown(e) {
+    if (e.key === 'Escape') {
+      showAutocomplete = false;
+      autocompleteSuggestions = [];
+      autocompleteHighlightIndex = -1;
+      e.stopPropagation();
+      return;
+    }
+    if (e.key === 'ArrowDown' && showAutocomplete && autocompleteSuggestions.length > 0) {
+      e.preventDefault();
+      autocompleteHighlightIndex = Math.min(autocompleteHighlightIndex + 1, autocompleteSuggestions.length - 1);
+      return;
+    }
+    if (e.key === 'ArrowUp' && showAutocomplete && autocompleteSuggestions.length > 0) {
+      e.preventDefault();
+      autocompleteHighlightIndex = Math.max(autocompleteHighlightIndex - 1, 0);
+      return;
+    }
+    if (e.key === 'Enter' && showAutocomplete && autocompleteSuggestions.length > 0) {
+      const idx = autocompleteHighlightIndex >= 0 ? autocompleteHighlightIndex : 0;
+      e.preventDefault();
+      selectAutocompleteSuggestion(autocompleteSuggestions[idx]);
+      return;
+    }
   }
 
   function selectAutocompleteSuggestion(suggestion) {
@@ -269,6 +321,7 @@
     matchInputValue = '';
     autocompleteSuggestions = [];
     showAutocomplete = false;
+    autocompleteHighlightIndex = -1;
   }
 
   function removeMatch(trackIndex, matchIndex) {
@@ -305,12 +358,21 @@
     return 'Unknown';
   }
 
+  function getMatchPillClass(match) {
+    if (match.name) return 'match-pill-area';
+    if (match.tag) return 'match-pill-tag';
+    if (match.area_type_tag) return 'match-pill-type';
+    if (match.boss) return 'match-pill-boss';
+    return 'match-pill-default';
+  }
+
   async function saveSoundtrack() {
     try {
       saving = true;
       errorMessage = '';
       const result = await ipcRenderer.invoke('saveSoundtrack', soundtrackData);
       if (result.success) {
+        originalDataJson = JSON.stringify(soundtrackData);
         onSave();
         onClose();
       } else {
@@ -340,6 +402,7 @@
       const saveResult = await ipcRenderer.invoke('saveSoundtrackAs', soundtrackData, result.filePath);
       if (saveResult.success) {
         currentFilePath = saveResult.file;
+        originalDataJson = JSON.stringify(soundtrackData);
         onSave();
         onClose();
       } else {
@@ -356,11 +419,84 @@
   function handleClickOutside(event) {
     if (!event.target.closest('.autocomplete-container')) {
       showAutocomplete = false;
+      autocompleteHighlightIndex = -1;
+    }
+  }
+
+  // Delete confirmation
+  let showDeleteConfirm = false;
+  let deleteTargetIndex = null;
+
+  // Unsaved-changes dialog: 'button' = Cancel clicked, 'window' = OS close requested
+  let showUnsavedDialog = false;
+  let pendingCloseSource = null; // 'button' | 'window' | null
+  // When true, we are closing after Save/Discard — beforeunload must not prevent or we re-open the dialog
+  let closingConfirmed = false;
+
+  function requestClose(source) {
+    if (isDirty) {
+      showUnsavedDialog = true;
+      pendingCloseSource = source;
+    } else {
+      doClose(source);
+    }
+  }
+
+  function doClose(source) {
+    if (source === 'window') {
+      ipcRenderer.send('editor-close-confirmed');
+    } else {
+      onClose();
+    }
+  }
+
+  function closeUnsavedDialog() {
+    showUnsavedDialog = false;
+    pendingCloseSource = null;
+  }
+
+  async function unsavedDialogSave() {
+    try {
+      saving = true;
+      errorMessage = '';
+      const result = await ipcRenderer.invoke('saveSoundtrack', soundtrackData);
+      if (result.success) {
+        originalDataJson = JSON.stringify(soundtrackData);
+        onSave();
+        const source = pendingCloseSource;
+        closeUnsavedDialog();
+        closingConfirmed = true;
+        doClose(source);
+      } else {
+        errorMessage = result.error || 'Failed to save soundtrack';
+      }
+    } catch (err) {
+      console.error('Error saving soundtrack:', err);
+      errorMessage = err.message || 'Failed to save soundtrack';
+    } finally {
+      saving = false;
+    }
+  }
+
+  function unsavedDialogDiscard() {
+    const source = pendingCloseSource;
+    closeUnsavedDialog();
+    closingConfirmed = true;
+    doClose(source);
+  }
+
+  // Backup: block close from renderer (e.g. when main process close event doesn't prevent on some systems)
+  function handleBeforeUnload(e) {
+    if (isDirty && !closingConfirmed) {
+      e.preventDefault();
+      e.returnValue = '';
+      requestClose('window');
+      return '';
     }
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window on:click={handleClickOutside} on:beforeunload={handleBeforeUnload} />
 
 <div 
   class="h-screen flex flex-col bg-bronze-bg p-6 font-pica text-bronze-label overflow-hidden"
@@ -368,10 +504,13 @@
   aria-labelledby="editor-title"
 >
   <!-- Header -->
-  <div class="flex items-center mb-4 flex-shrink-0">
+  <div class="flex flex-col mb-4 flex-shrink-0">
     <h2 id="editor-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
       Edit Soundtrack
     </h2>
+    {#if currentFilePath}
+      <p class="text-sm text-bronze-label/70 truncate mt-1" title={currentFilePath}>{currentFilePath}</p>
+    {/if}
   </div>
 
   {#if errorMessage}
@@ -382,6 +521,23 @@
 
   <!-- Tracks List -->
   <div class="flex-1 flex flex-col min-h-0 mb-4">
+    <div class="flex items-center justify-between mb-2 flex-shrink-0">
+      <h3 class="bronze-section-header text-xl">
+        Tracks
+        {#if filterQuery.trim()}
+          ({filteredTracks.length} of {soundtrackData.tracks.length})
+        {:else}
+          ({soundtrackData.tracks.length})
+        {/if}
+      </h3>
+      <button
+        on:click={openAddTrackModal}
+        class="bronze-btn-primary"
+        disabled={editingTrackIndex !== null || showAddTrackModal}
+      >
+        Add Track
+      </button>
+    </div>
     <div class="flex items-center gap-2 mb-2 flex-shrink-0">
       <div class="relative flex-1 min-w-0 flex items-center">
         <input
@@ -405,35 +561,18 @@
         {/if}
       </div>
     </div>
-    <div class="flex items-center justify-between mb-2 flex-shrink-0">
-      <h3 class="bronze-section-header text-xl">
-        Tracks
-        {#if filterQuery.trim()}
-          ({filteredTracks.length} of {soundtrackData.tracks.length})
-        {:else}
-          ({soundtrackData.tracks.length})
-        {/if}
-      </h3>
-      <button
-        on:click={openAddTrackModal}
-        class="bronze-btn-primary"
-        disabled={editingTrackIndex !== null || showAddTrackModal}
-      >
-        Add Track
-      </button>
-    </div>
-    <div class="flex-1 overflow-y-auto overflow-x-hidden space-y-2">
+    <div class="flex-1 overflow-y-auto overflow-x-hidden space-y-3">
       {#each filteredTracks as { track, index }}
-        <div class="rounded border border-bronze-border bg-bronze-panel min-w-0">
+        <div class="track-card rounded border border-bronze-border border-l-4 border-l-bronze-border bg-bronze-panel min-w-0 shadow-sm">
           <!-- Track Header (always visible) -->
-          <div class="p-3">
+          <div class="p-4">
             <div class="flex-1 min-w-0">
               <div class="font-bold text-base truncate text-bronze-label" title={track.name}>{track.name}</div>
-              <div class="text-sm text-bronze-label/80 truncate" title={track.location}>{track.location}</div>
+              <div class="text-sm text-bronze-label/70 truncate mt-0.5" title={track.location}>{track.location}</div>
               {#if track.matches.length > 0}
-                <div class="flex flex-wrap gap-1 mt-1">
+                <div class="flex flex-wrap gap-1.5 mt-2">
                   {#each track.matches as match}
-                    <span class="text-xs text-bronze-label/70 bg-bronze-bg px-1.5 py-0.5 rounded border border-bronze-border/50">
+                    <span class="text-xs px-2 py-0.5 rounded border {getMatchPillClass(match)}">
                       {getMatchPillLabel(match)}: {getMatchPillValue(match)}
                     </span>
                   {/each}
@@ -498,25 +637,27 @@
                         bind:value={matchInputValue}
                         on:input={(e) => handleMatchInputChange(e.target.value)}
                         on:focus={() => autocompleteSearch(matchInputValue, matchSearchType)}
-                        on:keydown={(e) => {
-                          if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
-                            selectAutocompleteSuggestion(autocompleteSuggestions[0]);
-                          }
-                        }}
+                        on:keydown={handleAutocompleteKeydown}
                         class="flex-1 bronze-input min-w-0"
                         placeholder="Search or click to browse…"
                       />
                     </div>
-                    {#if showAutocomplete && autocompleteSuggestions.length > 0}
-                      <div class="absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded">
-                        {#each autocompleteSuggestions as suggestion}
-                          <button
-                            on:click={() => selectAutocompleteSuggestion(suggestion)}
-                            class="w-full text-left px-2 py-1 hover:bg-bronze-bg text-sm bronze-label"
-                          >
-                            {suggestion.value}
-                          </button>
-                        {/each}
+                    {#if showAutocomplete}
+                      <div class="autocomplete-dropdown absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded shadow-lg">
+                        {#if autocompleteSuggestions.length > 0}
+                          {#each autocompleteSuggestions as suggestion, i}
+                            <button
+                              on:click={() => selectAutocompleteSuggestion(suggestion)}
+                              class="w-full text-left px-2 py-1.5 text-sm bronze-label transition-colors {i === autocompleteHighlightIndex ? 'bg-bronze-button text-bronze-buttonText' : 'hover:bg-bronze-bg'}"
+                            >
+                              {suggestion.value}
+                            </button>
+                          {/each}
+                        {:else}
+                          <div class="px-2 py-3 text-sm text-bronze-label/70 text-center">
+                            No results
+                          </div>
+                        {/if}
                       </div>
                     {/if}
                   </div>
@@ -551,7 +692,7 @@
                 Edit
               </button>
               <button
-                on:click={() => deleteTrack(index)}
+                on:click={() => requestDeleteTrack(index)}
                 class="bronze-btn-primary text-xs"
                 disabled={editingTrackIndex !== null}
               >
@@ -573,7 +714,7 @@
   </div>
 
   <!-- Save / Load Buttons -->
-  <div class="flex gap-2 justify-between items-center flex-shrink-0">
+  <div class="editor-footer flex gap-2 justify-between items-center flex-shrink-0 pt-4 mt-auto border-t border-bronze-border/60 bg-bronze-bg/50 -mx-6 px-6 py-4">
     <button
       on:click={loadSoundtrackFile}
       class="bronze-btn-accent"
@@ -584,7 +725,7 @@
     </button>
     <div class="flex gap-2">
       <button
-        on:click={onClose}
+        on:click={() => requestClose('button')}
         class="bronze-btn-secondary"
         disabled={saving || editingTrackIndex !== null}
       >
@@ -610,8 +751,7 @@
 
 <!-- Add Track Modal -->
 {#if showAddTrackModal}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-non-interactive-element-interactions -->
   <div 
     class="fixed inset-0 z-50 flex items-center justify-center p-6 bronze-overlay bg-black/60"
     on:click={closeAddTrackModal}
@@ -714,25 +854,27 @@
                 bind:value={matchInputValue}
                 on:input={(e) => handleMatchInputChange(e.target.value)}
                 on:focus={() => autocompleteSearch(matchInputValue, matchSearchType)}
-                on:keydown={(e) => {
-                  if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
-                    selectAutocompleteSuggestion(autocompleteSuggestions[0]);
-                  }
-                }}
+                on:keydown={handleAutocompleteKeydown}
                 class="flex-1 bronze-input min-w-0"
                 placeholder="Search or click to browse…"
               />
             </div>
-            {#if showAutocomplete && autocompleteSuggestions.length > 0}
-              <div class="absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded">
-                {#each autocompleteSuggestions as suggestion}
-                  <button
-                    on:click={() => selectAutocompleteSuggestion(suggestion)}
-                    class="w-full text-left px-2 py-1 hover:bg-bronze-bg text-sm bronze-label"
-                  >
-                    {suggestion.value}
-                  </button>
-                {/each}
+            {#if showAutocomplete}
+              <div class="autocomplete-dropdown absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded shadow-lg">
+                {#if autocompleteSuggestions.length > 0}
+                  {#each autocompleteSuggestions as suggestion, i}
+                    <button
+                      on:click={() => selectAutocompleteSuggestion(suggestion)}
+                      class="w-full text-left px-2 py-1.5 text-sm bronze-label transition-colors {i === autocompleteHighlightIndex ? 'bg-bronze-button text-bronze-buttonText' : 'hover:bg-bronze-bg'}"
+                    >
+                      {suggestion.value}
+                    </button>
+                  {/each}
+                {:else}
+                  <div class="px-2 py-3 text-sm text-bronze-label/70 text-center">
+                    No results
+                  </div>
+                {/if}
               </div>
             {/if}
           </div>
@@ -759,6 +901,105 @@
   </div>
 {/if}
 
+<!-- Unsaved Changes Dialog -->
+{#if showUnsavedDialog}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-non-interactive-element-interactions -->
+  <div
+    class="fixed inset-0 z-[60] flex items-center justify-center p-6 bronze-overlay bg-black/60"
+    on:click={() => closeUnsavedDialog()}
+    on:keydown={(e) => e.key === 'Escape' && closeUnsavedDialog()}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="unsaved-dialog-title"
+  >
+    <div
+      class="bronze-panel w-full max-w-md p-6 mx-4"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+    >
+      <h3 id="unsaved-dialog-title" class="text-xl font-exocet font-bold uppercase tracking-wide text-bronze-title mb-3">
+        Unsaved Changes
+      </h3>
+      <p class="text-bronze-label mb-6">
+        You have unsaved changes. Would you like to save before closing?
+      </p>
+      {#if errorMessage}
+        <div class="mb-4 p-2 rounded border border-bronze-border bg-bronze-bg text-bronze-label text-sm">
+          {errorMessage}
+        </div>
+      {/if}
+      <div class="flex gap-2 justify-end">
+        <button
+          on:click={closeUnsavedDialog}
+          class="bronze-btn-secondary"
+          disabled={saving}
+        >
+          Cancel
+        </button>
+        <button
+          on:click={unsavedDialogDiscard}
+          class="bronze-btn-secondary"
+          disabled={saving}
+        >
+          Discard
+        </button>
+        <button
+          on:click={unsavedDialogSave}
+          class="bronze-btn-primary"
+          disabled={saving}
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Delete Track Confirmation Dialog -->
+{#if showDeleteConfirm && deleteTargetIndex != null}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-non-interactive-element-interactions -->
+  <div
+    class="fixed inset-0 z-[60] flex items-center justify-center p-6 bronze-overlay bg-black/60"
+    on:click={cancelDeleteConfirm}
+    on:keydown={(e) => e.key === 'Escape' && cancelDeleteConfirm()}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-dialog-title"
+  >
+    <div
+      class="bronze-panel w-full max-w-md p-6 mx-4"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+    >
+      <h3 id="delete-dialog-title" class="text-xl font-exocet font-bold uppercase tracking-wide text-bronze-title mb-3">
+        Delete Track
+      </h3>
+      <p class="text-bronze-label mb-6">
+        Are you sure you want to delete this track?
+        {#if soundtrackData.tracks[deleteTargetIndex]}
+          <span class="block mt-2 font-bold truncate" title={soundtrackData.tracks[deleteTargetIndex].name}>
+            "{soundtrackData.tracks[deleteTargetIndex].name}"
+          </span>
+        {/if}
+      </p>
+      <div class="flex gap-2 justify-end">
+        <button
+          on:click={cancelDeleteConfirm}
+          class="bronze-btn-secondary"
+        >
+          Cancel
+        </button>
+        <button
+          on:click={confirmDeleteTrack}
+          class="bronze-btn-primary"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
   :global(body) {
     margin: 0;
@@ -777,5 +1018,27 @@
 
   .autocomplete-container {
     position: relative;
+  }
+
+  .match-pill-area {
+    @apply text-bronze-label/90 bg-bronze-bg border-bronze-border/60;
+  }
+  .match-pill-tag {
+    color: #0ba5a5;
+    background-color: rgba(11, 165, 165, 0.2);
+    border-color: rgba(11, 165, 165, 0.5);
+  }
+  .match-pill-type {
+    color: #C9A86C;
+    background-color: rgba(201, 168, 108, 0.15);
+    border-color: rgba(201, 168, 108, 0.4);
+  }
+  .match-pill-boss {
+    color: #d82f2f;
+    background-color: rgba(216, 47, 47, 0.2);
+    border-color: rgba(216, 47, 47, 0.5);
+  }
+  .match-pill-default {
+    @apply text-bronze-label/70 bg-bronze-bg border-bronze-border/50;
   }
 </style>
