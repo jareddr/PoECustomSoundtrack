@@ -1,19 +1,36 @@
 {
-  "name": "PoECustomSoundtrack",
-  "version": "1.6.1",
+  "name": "ExileTunes",
+  "version": "1.9.9",
   "description": "A small app to replace path of exile music with that of diablo",
   "main": "main.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "start": "cross-env NODE_ENV=development electron main.js",
-    "release": "electron-builder -p onTagOrDraft",
-    "dist": "electron-builder"
+    "electron:dev": "node scripts/dev.js",
+    "electron:build": "npm run build && electron-builder",
+    "release": "npm run build && electron-builder -p onTagOrDraft",
+    "dist": "npm run build && electron-builder"
   },
   "build": {
-    "appId": "PoECustomSoundtrack",
+    "appId": "ExileTunes",
     "asar": "true",
+    "files": [
+      "main.js",
+      "exileTunes.js",
+      "bosses.js",
+      "defaults.js",
+      "package.json",
+      "dist-renderer/**/*",
+      "!node_modules/**/*"
+    ],
     "win": {
       "publish": "github",
-      "icon": "pietyd2.ico",
+      "icon": "exiletunes.ico",
       "target": [
         "zip",
         "nsis"
@@ -22,6 +39,14 @@
     "nsis": {
       "oneClick": "true",
       "perMachine": "true"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "exile_tunes.png",
+      "category": "Utility"
+    },
+    "appImage": {
+      "synopsis": "Replace Path of Exile music with custom soundtracks"
     }
   },
   "eslintConfig": {
@@ -33,16 +58,25 @@
   "author": "jareddr",
   "license": "CC0-1.0",
   "dependencies": {
-    "electron-log": "^2.2.16",
-    "electron-settings": "^3.2.0",
-    "electron-updater": "^3.0.3",
+    "electron-log": "^5.0.1",
+    "electron-settings": "^4.0.4",
+    "electron-updater": "^6.1.7",
     "file-tail": "^0.3.0",
     "ipc": "0.0.1",
     "ps-list": "^5.0.0"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "@tailwindcss/typography": "^0.5.10",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
-    "electron": "~13.2.3",
-    "electron-builder": "~20.28.4"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.32",
+    "svelte": "^4.2.7",
+    "tailwindcss": "^3.3.6",
+    "vite": "^5.0.8",
+    "wait-on": "^7.2.0"
   }
 }

@@ -1,0 +1,1328 @@
+const { ipcMain, app } = require('electron');
+const path = require('path');
+const defaults = require('./defaults.js');
+const fs = require('fs');
+const fileTail = require('file-tail');
+const psList = require('ps-list');
+const { version } = require('./package.json');
+const constants = require('./constants.js');
+const settings = require('electron-settings');
+const bosses = require('./bosses.js');
+const https = require('https');
+
+/**
+ * Extract a JSON object or array from HTML after a given prefix (e.g. "var ytInitialData = ").
+ * Matches braces so nested JSON is captured correctly.
+ */
+function extractJsonFromHtml(html, prefix) {
+  const idx = html.indexOf(prefix);
+  if (idx < 0) return null;
+  const start = idx + prefix.length;
+  const rest = html.slice(start).trim();
+  const open = rest[0] === '[' ? '[' : '{';
+  const close = rest[0] === '[' ? ']' : '}';
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let i = 0;
+  for (; i < rest.length; i++) {
+    const c = rest[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\' && inString) { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === open) depth++;
+    else if (c === close) { depth--; if (depth === 0) break; }
+  }
+  if (depth !== 0) return null;
+  try {
+    return JSON.parse(rest.slice(0, i + 1));
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Fetch YouTube playlist page and parse video list from ytInitialData (no consent redirect).
+ * Returns { success: true, items: [ { url, name } ] } or { success: false, error }.
+ */
+function fetchYouTubePlaylistVideos(playlistId) {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'www.youtube.com',
+      path: '/playlist?list=' + encodeURIComponent(playlistId),
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cookie': 'CONSENT=YES+cb.20210716-13-p1.en+FX;'
+      }
+    };
+    const req = https.request(options, (res) => {
+      if (res.statusCode !== 200) {
+        resolve({ success: false, error: `Request failed: ${res.statusCode} ${res.statusMessage}` });
+        return;
+      }
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        const data = extractJsonFromHtml(body, 'var ytInitialData = ');
+        if (!data || !data.contents) {
+          resolve({ success: false, error: 'Could not find playlist data in page (YouTube may have changed)' });
+          return;
+        }
+        try {
+          const tabs = data.contents?.twoColumnBrowseResultsRenderer?.tabs;
+          const tab = Array.isArray(tabs) ? tabs[0] : null;
+          const content = tab?.tabRenderer?.content;
+          const sectionList = content?.sectionListRenderer?.contents;
+          const firstSection = Array.isArray(sectionList) ? sectionList[0] : null;
+          const itemSection = firstSection?.itemSectionRenderer?.contents;
+          const playlistRenderer = Array.isArray(itemSection) ? itemSection[0] : null;
+          const listContents = playlistRenderer?.playlistVideoListRenderer?.contents;
+          const rawList = Array.isArray(listContents) ? listContents : [];
+          const items = [];
+          for (const item of rawList) {
+            if (item.continuationItemRenderer) continue;
+            const video = item.playlistVideoRenderer;
+            if (!video?.videoId) continue;
+            const title = video.title?.runs?.[0]?.text ?? video.title?.simpleText ?? 'Untitled';
+            items.push({
+              url: 'https://www.youtube.com/watch?v=' + video.videoId,
+              name: String(title).trim() || 'Untitled'
+            });
+          }
+          console.log('[fetchYouTubePlaylist] playlistId:', playlistId, 'videos:', items.length);
+          resolve({ success: true, items });
+        } catch (err) {
+          console.error('fetchYouTubePlaylist parse error:', err);
+          resolve({ success: false, error: err.message || 'Failed to parse playlist' });
+        }
+      });
+    });
+    req.on('error', (err) => {
+      console.error('fetchYouTubePlaylist request error:', err);
+      resolve({ success: false, error: err.message || 'Network error' });
+    });
+    req.setTimeout(15000, () => {
+      req.destroy();
+      resolve({ success: false, error: 'Request timed out' });
+    });
+    req.end();
+  });
+}
+
+let mainWindow = null;
+let currentTrackName = false;
+let currentTrackId = false;
+let currentZoneName = false;
+let fileTailInstance = null;
+let isUpdateAvailable = false;
+let isUpdateDownloading = false;
+let autoUpdater = false;
+let isPoERunning = false;
+
+let soundtrack = defaults.soundtrack;
+
+// Cache for world areas data
+let worldAreas = null;
+
+// State tracking for change detection
+let configFileWatcher = null;
+let poeStatusCheckInterval = null;
+let lastState = null;
+
+/**
+ * Reset current track tracking state
+ */
+function reset() {
+  currentTrackName = false;
+  currentTrackId = false;
+  currentZoneName = false;
+}
+
+/**
+ * Update the running status of Path of Exile by checking process list
+ * @returns {Promise<boolean>} True if status changed, false otherwise
+ */
+function updateRunningStatus() {
+  return psList()
+    .then((processes) => {
+      const wasPoERunning = isPoERunning;
+      const running = processes.filter((proc) => proc.name.match(/pathofexile/i));
+      isPoERunning = running.length > 0;
+
+      if (wasPoERunning === true && isPoERunning === false) {
+        reset();
+      }
+
+      // Return true if status changed
+      return wasPoERunning !== isPoERunning;
+    })
+    .catch((err) => {
+      // Silently handle errors from process list check (e.g., tasklist command cancelled)
+      // This prevents unhandled promise rejection warnings
+      console.warn('Process list check failed:', err.message);
+      return false;
+    });
+}
+
+
+
+/**
+ * Determine the track type based on location URL
+ * @param {string} location - Track location URL or path
+ * @returns {string} Track type: 'youtube', 'soundcloud', or 'local'
+ */
+function getTrackType(location) {
+  if (location.match(/http/) && location.match(/youtu/)) {
+    return 'youtube';
+  } else if (location.match(/http/) && location.match(/soundcloud/)) {
+    return 'soundcloud';
+  }
+  return 'local';
+}
+
+/**
+ * Extract track ID from location URL
+ * @param {string} location - Track location URL or path
+ * @returns {string|false} Track ID or false if not found
+ */
+function getTrackId(location) {
+  const type = getTrackType(location);
+  if (type === 'youtube' && location.match(/\?v=(.{11})/)) {
+    return location.match(/\?v=(.{11})/)[1];
+  } else if (type === 'local') {
+    return location;
+  }
+  return false;
+}
+
+/**
+ * Get the Path of Exile client log file path
+ * @param {string} poePath - Path of Exile installation directory
+ * @returns {string} Full path to Client.txt log file
+ */
+function getLogFile(poePath) {
+  return `${poePath}\\${constants.PATHS.LOG_SUBDIRECTORY}\\${constants.PATHS.LOG_FILE_NAME}`;
+}
+
+/**
+ * Generate a track object from track data
+ * @param {Object} track - Track data object
+ * @returns {Object} Track object with type, id, name, and endSeconds
+ */
+function generateTrack(track) {
+  const type = getTrackType(track.location);
+  const id = getTrackId(track.location);
+  return {
+    type,
+    id,
+    name: track.name,
+    endSeconds: track.endSeconds, // Optional ending time in seconds to loop earlier
+  };
+}
+
+/**
+ * Select a random element from array, excluding current track if possible
+ * @param {Array} arr - Array of track objects
+ * @returns {Object|false} Random track object or false if array is empty
+ */
+function randomElement(arr) {
+  if (!arr || arr.length === 0) {
+    return false;
+  }
+
+  // Find tracks other than current track
+  const otherTrackArr = arr.filter((t) => getTrackId(t.location) !== currentTrackId);
+
+  if (otherTrackArr.length === 0) {
+    // No other tracks, reuse current track
+    return arr[0];
+  }
+
+  // Has other tracks, exclude current track and pick a random one
+  return otherTrackArr[Math.floor(Math.random() * otherTrackArr.length)];
+}
+
+/**
+ * Load and cache world areas data from world_areas.json
+ * @returns {boolean} True if loaded successfully, false otherwise
+ */
+function loadWorldAreas() {
+  try {
+    const worldAreasData = readJsonFile('world_areas.json');
+    if (!worldAreasData) {
+      console.warn('Failed to load world_areas.json');
+      return false;
+    }
+    worldAreas = worldAreasData;
+    return true;
+  } catch (err) {
+    console.error('Error loading world_areas.json:', err);
+    return false;
+  }
+}
+
+/**
+ * Find a zone in world_areas.json by name (returns first match)
+ * @param {string} areaName - Name of the area/zone
+ * @returns {Object|null} Zone data object or null if not found
+ */
+function findZoneByName(areaName) {
+  if (!worldAreas) {
+    return null;
+  }
+
+  // Search through all entries to find first match by name
+  for (const zoneId in worldAreas) {
+    const zone = worldAreas[zoneId];
+    if (zone && zone.name === areaName) {
+      return zone;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a track matches a zone based on match criteria
+ * @param {Object} track - Track object with matches array
+ * @param {Object} zone - Zone data from world_areas.json
+ * @returns {boolean} True if track matches zone
+ */
+function trackMatchesZone(track, zone) {
+  if (!track.matches || !Array.isArray(track.matches)) {
+    return false;
+  }
+
+  for (const match of track.matches) {
+    // Match by name
+    if (match.name && zone.name === match.name) {
+      return true;
+    }
+
+    // Match by tag
+    if (match.tag && Array.isArray(zone.tags) && zone.tags.includes(match.tag)) {
+      return true;
+    }
+
+    // Match by area_type_tag
+    if (match.area_type_tag && Array.isArray(zone.area_type_tags) && zone.area_type_tags.includes(match.area_type_tag)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/** Sentinel returned by getTrack when unlinkedZoneBehavior is 'silence' */
+const UNLINKED_SILENCE = { _unlinkedSilence: true };
+
+/**
+ * Get unlinked zone behavior: 'random' | 'silence' | 'keep'. Default 'random'.
+ */
+function getUnlinkedZoneBehavior() {
+  const opt = soundtrack.options && soundtrack.options.unlinkedZoneBehavior;
+  if (opt === 'random' || opt === 'silence' || opt === 'keep') {
+    return opt;
+  }
+  // Backward compat: old randomOnNoMatch
+  if (soundtrack.options && soundtrack.options.randomOnNoMatch === true) {
+    return 'random';
+  }
+  return 'keep';
+}
+
+/**
+ * Get a track for the given area name
+ * @param {string} areaName - Name of the area/zone
+ * @returns {Object|typeof UNLINKED_SILENCE|false} Track object, UNLINKED_SILENCE to stop, or false to keep playing
+ */
+function getTrack(areaName) {
+  // First, try to match by name directly (for special cases like login, bosses, etc.)
+  // This works even if the zone isn't in world_areas.json
+  const nameMatchTracks = soundtrack.tracks.filter((track) => {
+    if (!track.matches || !Array.isArray(track.matches)) {
+      return false;
+    }
+    return track.matches.some((match) => match.name === areaName || match.boss === areaName);
+  });
+
+  if (nameMatchTracks.length > 0) {
+    const trackData = randomElement(nameMatchTracks);
+    return trackData ? generateTrack(trackData) : false;
+  }
+
+  const unlinkedBehavior = getUnlinkedZoneBehavior();
+
+  // Look up zone in world_areas.json for tag/area_type_tag matching
+  const zone = findZoneByName(areaName);
+  if (!zone) {
+    // Zone not found in world_areas.json and no name match
+    if (unlinkedBehavior === 'random') {
+      const trackData = randomElement(soundtrack.tracks);
+      return trackData ? generateTrack(trackData) : false;
+    }
+    if (unlinkedBehavior === 'silence') {
+      return UNLINKED_SILENCE;
+    }
+    return false; // keep
+  }
+
+  // Find all tracks that match this zone by tags or area_type_tags
+  // (name matching was already handled above)
+  const matchingTracks = soundtrack.tracks.filter((track) => {
+    if (!track.matches || !Array.isArray(track.matches)) {
+      return false;
+    }
+
+    for (const match of track.matches) {
+      // Skip name matches (already handled above)
+      if (match.name) {
+        continue;
+      }
+
+      // Match by tag
+      if (match.tag && Array.isArray(zone.tags) && zone.tags.includes(match.tag)) {
+        return true;
+      }
+
+      // Match by area_type_tag
+      if (match.area_type_tag && Array.isArray(zone.area_type_tags) && zone.area_type_tags.includes(match.area_type_tag)) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  if (matchingTracks.length === 0) {
+    // No matches found for this zone
+    if (unlinkedBehavior === 'random') {
+      const trackData = randomElement(soundtrack.tracks);
+      return trackData ? generateTrack(trackData) : false;
+    }
+    if (unlinkedBehavior === 'silence') {
+      return UNLINKED_SILENCE;
+    }
+    return false; // keep
+  }
+
+  // Multiple matches - pick one at random
+  const trackData = randomElement(matchingTracks);
+  if (!trackData) {
+    return false;
+  }
+
+  return generateTrack(trackData);
+}
+
+
+/**
+ * Send track change to renderer process
+ * @param {Object} track - Track object to send
+ */
+function sendTrackChange(track) {
+  if (!mainWindow || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
+
+  // Ensure track object is serializable for IPC
+  const serializableTrack = {
+    type: String(track.type || ''),
+    id: String(track.id || ''),
+    name: String(track.name || ''),
+    endSeconds: track.endSeconds ? Number(track.endSeconds) : undefined,
+  };
+
+  try {
+    mainWindow.webContents.send('changeTrack', serializableTrack);
+  } catch (err) {
+    console.error('Error sending changeTrack:', err);
+  }
+}
+
+/**
+ * Tell renderer to stop playback (unload active track) for unlinked zone silence
+ */
+function sendStopTrack() {
+  if (!mainWindow || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
+  try {
+    mainWindow.webContents.send('stopTrack');
+  } catch (err) {
+    console.error('Error sending stopTrack:', err);
+  }
+}
+
+/**
+ * Parse a line from the Path of Exile log file and trigger track changes
+ * @param {string} line - Line from the log file
+ */
+function parseLogLine(line) {
+  // Assume PoE is running if a new log line comes in
+  const wasPoERunning = isPoERunning;
+  isPoERunning = true;
+  
+  // Broadcast state if PoE just started running
+  if (!wasPoERunning && isPoERunning) {
+    broadcastStateUpdate();
+  }
+
+  // Watch log file for area changes
+  let newArea = line.match(/You have entered ([^.]*)./);
+
+  // Also watch for PoE to boot up and play login window music
+  const loginWindow = line.match(/LOG FILE OPENING/);
+
+  // Exit to login window
+  const exitWindow = line.match(/] Async connecting to /)
+    || line.match(/] Abnormal disconnect: An unexpected disconnection occurred./);
+
+  if (loginWindow || exitWindow) {
+    newArea = ['login', 'login'];
+  }
+
+  // Get the boss name if the logs contains boss dialog
+  const boss = getBoss(line);
+  if (boss) {
+    // Boss music will be handled by the soundtrack json similar to new areas
+    newArea = [boss, boss];
+  }
+
+  if (!newArea) {
+    return;
+  }
+
+  const areaCode = newArea[1];
+  const track = getTrack(areaCode);
+
+  // Unlinked zone: silence — stop playback and update zone display
+  if (track && track._unlinkedSilence) {
+    currentTrackName = '';
+    currentTrackId = '';
+    currentZoneName = areaCode === 'login' ? 'Login Screen' : (boss || newArea[1] || areaCode);
+    sendStopTrack();
+    broadcastStateUpdate();
+    return;
+  }
+
+  // Unlinked zone: keep playing — do nothing
+  if (!track) {
+    return;
+  }
+
+  // Login screen uses existing logic (check track name)
+  // Zone transition checks track ID instead of track names
+  const shouldChangeTrack = areaCode === 'login'
+    ? currentTrackName !== track.name
+    : currentTrackId !== track.id;
+
+  if (shouldChangeTrack) {
+    currentTrackName = track.name;
+    currentTrackId = track.id;
+    // Store the zone name for display (use areaCode, but prefer actual zone name if available)
+    if (areaCode === 'login') {
+      currentZoneName = 'Login Screen';
+    } else if (boss) {
+      currentZoneName = boss;
+    } else {
+      // Use the area name from the log line match
+      currentZoneName = newArea[1] || areaCode;
+    }
+    sendTrackChange(track);
+    // Broadcast state update to include new zone name
+    broadcastStateUpdate();
+  }
+}
+
+/**
+ * Check whether a line in the logs contains boss dialog
+ * @param {string} line - Line from the log file
+ * @returns {string|null} Boss name if found, null otherwise
+ */
+function getBoss(line) {
+  try {
+    const dialogText = line.substring(line.lastIndexOf('] ') + 2);
+    return bosses.dialog[dialogText] || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Start watching the Path of Exile log file for changes
+ */
+function startWatchingLog() {
+  // If we're already watching a file, stop before watching a new file
+  if (fileTailInstance && fileTailInstance.stop) {
+    fileTailInstance.stop();
+  }
+
+  const poePath = settings.getSync('poePath');
+  if (!poePath) {
+    console.warn('PoE path not set, cannot watch log file');
+    return;
+  }
+
+  try {
+    fileTailInstance = fileTail.startTailing(getLogFile(poePath));
+    fileTailInstance.on('line', parseLogLine);
+    
+    // Broadcast state update when log file watching starts (log file existence may have changed)
+    broadcastStateUpdate();
+  } catch (err) {
+    console.error('Error starting log file watch:', err);
+    // Still broadcast state even if watching fails (log file might not exist)
+    broadcastStateUpdate();
+  }
+}
+
+/**
+ * Check if a file exists
+ * @param {string} file - Path to the file
+ * @returns {boolean} True if file exists, false otherwise
+ */
+function doesFileExist(file) {
+  try {
+    const handle = fs.openSync(file, 'r+');
+    fs.closeSync(handle);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Write data to a file
+ * @param {string} file - Path to the file
+ * @param {string} data - Data to write
+ * @returns {boolean} True if successful, false otherwise
+ */
+function writeFile(file, data) {
+  try {
+    const handle = fs.openSync(file, 'w');
+    fs.writeFileSync(file, data);
+    fs.closeSync(handle);
+    return true;
+  } catch (err) {
+    console.error(`Error writing file ${file}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Read and parse a JSON file
+ * @param {string} file - Path to the JSON file
+ * @returns {Object|false} Parsed JSON object or false on error
+ */
+function readJsonFile(file) {
+  if (!file || typeof file !== 'string' || !file.trim()) return null;
+  try {
+    const handle = fs.openSync(file, 'r');
+    let data = fs.readFileSync(file, 'utf-8');
+    fs.closeSync(handle);
+    data = data.replace(/\\+/g, '/');
+    return JSON.parse(data);
+  } catch (err) {
+    const errorMsg = String(err.message || 'Unknown error');
+    console.error(`Error reading JSON file ${file}:`, errorMsg);
+
+    if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      try {
+        mainWindow.webContents.send('errorMessage', `Error loading: ${file}\n${errorMsg}`);
+      } catch (sendErr) {
+        console.error('Error sending errorMessage:', sendErr);
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Check if the Path of Exile log file exists
+ * @returns {boolean} True if log file exists, false otherwise
+ */
+function doesLogExist() {
+  const poePath = settings.getSync('poePath');
+  if (!poePath) {
+    return false;
+  }
+  const file = getLogFile(poePath);
+  return doesFileExist(file);
+}
+
+
+/**
+ * Helper function to find the Path of Exile config file
+ * Handles cases where Documents folder might be in OneDrive
+ * @returns {string} Path to the config file
+ */
+function findPoEConfigFile() {
+  if (process.platform !== 'win32') {
+    // Non-Windows: use HOME
+    const home = process.env.HOME;
+    return `${home}/Documents/My Games/Path of Exile/production_Config.ini`;
+  }
+
+  const userProfile = process.env.USERPROFILE;
+  const possiblePaths = [
+    // Standard Documents location
+    `${userProfile}\\Documents\\My Games\\Path of Exile\\production_Config.ini`,
+    // OneDrive Documents location
+    `${userProfile}\\OneDrive\\Documents\\My Games\\Path of Exile\\production_Config.ini`,
+    // Check OneDrive environment variable if set
+    process.env.ONEDRIVE
+      ? `${process.env.ONEDRIVE}\\Documents\\My Games\\Path of Exile\\production_Config.ini`
+      : null,
+  ].filter((path) => path !== null);
+
+  // Try each path and return the first one that exists
+  for (const configPath of possiblePaths) {
+    if (doesFileExist(configPath)) {
+      return configPath;
+    }
+  }
+
+  // If none found, return the standard path (caller will handle the error)
+  return possiblePaths[0];
+}
+
+/**
+ * Check the music volume setting in PoE config file
+ * @returns {number|false} Music volume (0-100) or false if not found/error
+ */
+function checkMusicVolume() {
+  const configFile = findPoEConfigFile();
+  if (!configFile) {
+    return false;
+  }
+
+  try {
+    const handle = fs.openSync(configFile, 'r+');
+    const data = fs.readFileSync(configFile, 'utf-8');
+    fs.closeSync(handle);
+
+    const match = data.match(/music_volume[2]=(\d+)/i);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  } catch (err) {
+    console.warn('Error reading music volume from config:', err.message);
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * Check if character event voices are disabled in PoE config file
+ * @returns {boolean|false} True if disabled, false if enabled, or false on error
+ */
+function checkCharEvent() {
+  const configFile = findPoEConfigFile();
+  if (!configFile) {
+    return false;
+  }
+
+  try {
+    const handle = fs.openSync(configFile, 'r+');
+    const data = fs.readFileSync(configFile, 'utf-8');
+    fs.closeSync(handle);
+
+    const match = data.match(/disable_char_events=(\w+)/i);
+    if (match) {
+      return match[1] === 'true';
+    }
+  } catch (err) {
+    console.warn('Error reading char events setting from config:', err.message);
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * Watch PoE config file for changes and broadcast state updates when config values change
+ */
+function watchConfigFile() {
+  // Stop existing watcher if any
+  if (configFileWatcher) {
+    try {
+      configFileWatcher.close();
+    } catch (err) {
+      // Ignore errors when closing watcher
+    }
+    configFileWatcher = null;
+  }
+
+  const configFile = findPoEConfigFile();
+  if (!configFile || !doesFileExist(configFile)) {
+    return;
+  }
+
+  try {
+    // Use fs.watch to monitor config file changes
+    configFileWatcher = fs.watch(configFile, (eventType) => {
+      if (eventType === 'change') {
+        // Debounce: wait a bit before reading (file might still be writing)
+        setTimeout(() => {
+          // Re-read config values and broadcast if changed
+          broadcastStateUpdate();
+        }, 500);
+      }
+    });
+
+    configFileWatcher.on('error', (err) => {
+      console.warn('Config file watcher error:', err.message);
+      configFileWatcher = null;
+    });
+  } catch (err) {
+    console.warn('Error setting up config file watcher:', err.message);
+    configFileWatcher = null;
+  }
+}
+
+/**
+ * Start periodic check for PoE running status
+ * Only broadcasts state when status actually changes
+ */
+function startPoEStatusCheck() {
+  // Stop existing interval if any
+  if (poeStatusCheckInterval) {
+    clearInterval(poeStatusCheckInterval);
+    poeStatusCheckInterval = null;
+  }
+
+  // Check every 2-3 seconds (using 2500ms as a middle ground)
+  poeStatusCheckInterval = setInterval(() => {
+    updateRunningStatus().then((statusChanged) => {
+      if (statusChanged) {
+        broadcastStateUpdate();
+      }
+    });
+  }, 2500);
+}
+
+/**
+ * Stop periodic PoE status check
+ */
+function stopPoEStatusCheck() {
+  if (poeStatusCheckInterval) {
+    clearInterval(poeStatusCheckInterval);
+    poeStatusCheckInterval = null;
+  }
+}
+
+/**
+ * Set default settings and create default soundtrack file if needed
+ */
+function setDefaults() {
+  // Make sure default soundtrack is on disk
+  const defaultSoundtrackFile = `diablo2-v${version}.soundtrack`;
+  if (!doesFileExist(defaultSoundtrackFile)) {
+    writeFile(
+      defaultSoundtrackFile,
+      JSON.stringify(defaults.soundtrack, null, '\t')
+    );
+  }
+
+  // Define poePath in settings if not set
+  if (!settings.getSync('poePath')) {
+    settings.setSync('poePath', constants.PATHS.DEFAULT_POE_PATH);
+  }
+
+  // Define selected soundtrack if not set
+  if (!settings.getSync('soundtrack')) {
+    settings.setSync('soundtrack', defaultSoundtrackFile);
+  }
+
+  // Define player volume if not set
+  if (!settings.getSync('playerVolume')) {
+    settings.setSync('playerVolume', String(constants.PLAYER.DEFAULT_VOLUME));
+  }
+}
+
+/**
+ * Load a soundtrack file
+ * @param {string} file - Path to the soundtrack file
+ * @returns {boolean} True if loaded successfully, false otherwise
+ */
+function loadSoundtrack(file) {
+  const currentSoundtrack = soundtrack;
+  const newSoundtrack = readJsonFile(file);
+  if (!newSoundtrack) {
+    return false;
+  }
+
+  // Validate new format structure
+  if (!newSoundtrack.tracks || !Array.isArray(newSoundtrack.tracks)) {
+    console.error('Invalid soundtrack format: missing or invalid tracks array');
+    if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      try {
+        mainWindow.webContents.send('errorMessage', `Invalid soundtrack format: missing tracks array`);
+      } catch (sendErr) {
+        console.error('Error sending errorMessage:', sendErr);
+      }
+    }
+    return false;
+  }
+
+  // Validate that tracks have matches array (new format)
+  const hasMatches = newSoundtrack.tracks.some((track) => track.matches && Array.isArray(track.matches));
+  if (!hasMatches && !newSoundtrack.map) {
+    console.warn('Soundtrack file may be missing matches arrays in tracks');
+  }
+
+  // Ensure options object exists with unlinkedZoneBehavior (default 'random')
+  if (!newSoundtrack.options) {
+    newSoundtrack.options = { unlinkedZoneBehavior: 'random' };
+  } else {
+    const valid = ['random', 'silence', 'keep'];
+    if (!valid.includes(newSoundtrack.options.unlinkedZoneBehavior)) {
+      // Migrate from legacy randomOnNoMatch
+      newSoundtrack.options.unlinkedZoneBehavior = newSoundtrack.options.randomOnNoMatch === true
+        ? 'random'
+        : 'keep';
+    }
+  }
+
+  soundtrack = newSoundtrack;
+  return true;
+}
+
+
+/**
+ * Get the current application state for IPC transmission
+ * @returns {Object} State object with all serializable primitives
+ */
+function getState() {
+  // Ensure all values are serializable primitives for IPC
+  // Electron 31 has strict IPC serialization requirements
+  try {
+    // Get settings values using getSync() for synchronous access (electron-settings v4)
+    const poePath = settings.getSync('poePath') || '';
+    const soundtrackPath = settings.getSync('soundtrack') || '';
+    const playerVolume = settings.getSync('playerVolume')
+      || String(constants.PLAYER.DEFAULT_VOLUME);
+
+    const volume = checkMusicVolume();
+    const charEvent = checkCharEvent();
+    const logExists = doesLogExist();
+
+    const soundtrackTrackCount = soundtrack && Array.isArray(soundtrack.tracks) ? soundtrack.tracks.length : 0;
+
+    // Create a plain object with only serializable primitives
+    const state = {
+      path: String(poePath),
+      valid: Boolean(logExists),
+      volume: (volume !== false && !isNaN(Number(volume))) ? Number(volume) : 0,
+      charEvent: Boolean(charEvent),
+      soundtrack: String(soundtrackPath),
+      soundtrackTrackCount,
+      playerVolume: String(playerVolume),
+      isUpdateAvailable: Boolean(isUpdateAvailable),
+      isUpdateDownloading: Boolean(isUpdateDownloading),
+      isPoERunning: Boolean(isPoERunning),
+      currentZoneName: currentZoneName ? String(currentZoneName) : '',
+      currentTrackName: currentTrackName ? String(currentTrackName) : '',
+    };
+
+    // Verify serializability by attempting to stringify
+    JSON.stringify(state);
+
+    return state;
+  } catch (err) {
+    // If anything fails, return a safe default state
+    console.error('Error in getState():', err);
+    return {
+      path: '',
+      valid: false,
+      volume: 0,
+      charEvent: true,
+      soundtrack: '',
+      soundtrackTrackCount: 0,
+      playerVolume: String(constants.PLAYER.DEFAULT_VOLUME),
+      isUpdateAvailable: false,
+      isUpdateDownloading: false,
+      isPoERunning: false,
+      currentZoneName: '',
+      currentTrackName: '',
+    };
+  }
+}
+
+/**
+ * Handle update available event
+ * @param {Object} updater - Auto-updater instance
+ */
+function updateAvailable(updater) {
+  isUpdateAvailable = true;
+  autoUpdater = updater;
+  broadcastStateUpdate();
+}
+
+/**
+ * Handle update downloading event
+ */
+function updateDownloading() {
+  isUpdateDownloading = true;
+  broadcastStateUpdate();
+}
+
+/**
+ * Send state update to renderer process (event-based, for IPC handlers)
+ * @param {Object} event - IPC event object
+ */
+function sendStateUpdate(event) {
+  try {
+    const state = getState();
+    if (event.sender && !event.sender.isDestroyed()) {
+      event.sender.send('updateState', state);
+      lastState = state;
+    }
+  } catch (err) {
+    console.error('Error sending updateState:', err);
+  }
+}
+
+/**
+ * Broadcast state update to renderer process proactively (when state changes)
+ * Only sends if state has actually changed
+ */
+function broadcastStateUpdate() {
+  if (!mainWindow || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
+
+  try {
+    const state = getState();
+    
+    // Only broadcast if state has changed
+    if (lastState === null || JSON.stringify(state) !== JSON.stringify(lastState)) {
+      mainWindow.webContents.send('updateState', state);
+      lastState = state;
+    }
+  } catch (err) {
+    console.error('Error broadcasting updateState:', err);
+  }
+}
+
+/**
+ * Initialize the application and set up IPC handlers
+ * @param {Object} browserWindow - Main browser window instance
+ */
+function run(browserWindow) {
+  mainWindow = browserWindow;
+
+  setDefaults();
+  loadWorldAreas();
+
+  // Resolve soundtrack path: relative paths are resolved from app directory so startup load finds the file
+  let soundtrackPath = settings.getSync('soundtrack') || '';
+  if (soundtrackPath && !path.isAbsolute(soundtrackPath)) {
+    soundtrackPath = path.join(app.getAppPath(), soundtrackPath);
+  }
+  loadSoundtrack(soundtrackPath);
+
+  startWatchingLog();
+
+  // Push state to main window after delays so it gets correct track count once ready (handles load race)
+  [300, 800, 1500].forEach((ms) => {
+    setTimeout(() => {
+      if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        try {
+          const state = getState();
+          mainWindow.webContents.send('updateState', state);
+          lastState = state;
+        } catch (err) {
+          console.error('Error sending delayed updateState:', err);
+        }
+      }
+    }, ms);
+  });
+  
+  // Start watching config file for changes
+  watchConfigFile();
+  
+  // Start periodic PoE status check
+  startPoEStatusCheck();
+
+  // IPC handler for setting PoE path
+  ipcMain.on('setPoePath', (event, arg) => {
+    if (arg && arg[0]) {
+      settings.setSync('poePath', arg[0]);
+      if (doesLogExist()) {
+        startWatchingLog();
+      }
+      sendStateUpdate(event);
+      // Also watch config file for the new path's config
+      watchConfigFile();
+    }
+  });
+
+  // IPC handler for setting soundtrack
+  ipcMain.on('setSoundtrack', (event, arg) => {
+    if (arg && arg[0]) {
+      const loaded = loadSoundtrack(arg[0]);
+      if (loaded) {
+        settings.setSync('soundtrack', arg[0]);
+        sendStateUpdate(event);
+        // Always push state to main window when a file is loaded (don't rely on change detection)
+        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+          try {
+            const state = getState();
+            mainWindow.webContents.send('updateState', state);
+            lastState = state;
+          } catch (err) {
+            console.error('Error sending updateState to main window after setSoundtrack:', err);
+          }
+        }
+      }
+    }
+  });
+
+  // IPC handler for setting player volume
+  ipcMain.on('setPlayerVolume', (event, arg) => {
+    if (arg) {
+      settings.setSync('playerVolume', arg);
+      // Broadcast state update when volume changes
+      broadcastStateUpdate();
+    }
+  });
+
+  // IPC handler for requesting state update (for initial load)
+  ipcMain.on('updateState', (event) => {
+    updateRunningStatus().then(() => {
+      // Use setImmediate to ensure state is ready and avoid race conditions
+      setImmediate(() => {
+        sendStateUpdate(event);
+      });
+    });
+  });
+
+  // IPC handler for installing update
+  ipcMain.on('installUpdate', () => {
+    if (autoUpdater) {
+      autoUpdater.downloadUpdate();
+    }
+  });
+
+  // IPC handler for getting soundtrack data
+  ipcMain.handle('getSoundtrackData', () => {
+    return {
+      data: soundtrack,
+      filePath: settings.getSync('soundtrack') || ''
+    };
+  });
+
+  // IPC handler for fetching YouTube playlist video list (no API key; direct GET + ytInitialData parse)
+  ipcMain.handle('fetchYouTubePlaylist', async (event, playlistUrl) => {
+    const url = (playlistUrl && String(playlistUrl).trim()) || '';
+    const hasListParam = url.includes('list=');
+    const isPlaylistUrl = url.includes('youtube.com/playlist') || (url.includes('youtube.com') && hasListParam) || (url.includes('youtu.be') && hasListParam);
+    if (!url || !isPlaylistUrl) {
+      return { success: false, error: 'Please enter a valid YouTube playlist URL (e.g. https://www.youtube.com/playlist?list=...)' };
+    }
+    const listMatch = url.match(/[?&]list=([^&]+)/);
+    const playlistId = listMatch ? listMatch[1].trim() : '';
+    if (!playlistId) {
+      return { success: false, error: 'Could not find playlist ID in URL' };
+    }
+    return fetchYouTubePlaylistVideos(playlistId);
+  });
+
+  // IPC handler for getting world areas data for autocomplete
+  ipcMain.handle('getWorldAreasData', (event, searchType, query) => {
+    if (String(searchType).toLowerCase() === 'boss') {
+      try {
+        if (!bosses || typeof bosses.dialog !== 'object') {
+          console.error('getWorldAreasData (boss): bosses.dialog not available');
+          return [];
+        }
+        const uniqueBosses = [...new Set(Object.values(bosses.dialog))].filter(Boolean).sort();
+        const queryLower = (query && String(query).toLowerCase()) || '';
+        const isEmptyQuery = !queryLower;
+        const maxResults = 50;
+        const filtered = isEmptyQuery
+          ? uniqueBosses.slice(0, maxResults)
+          : uniqueBosses.filter((name) => name.toLowerCase().includes(queryLower)).slice(0, maxResults);
+        return filtered.map((value) => ({ value, type: 'boss' }));
+      } catch (err) {
+        console.error('getWorldAreasData (boss):', err);
+        return [];
+      }
+    }
+
+    if (!worldAreas) {
+      return [];
+    }
+
+    const results = [];
+    const queryLower = (query && String(query).toLowerCase()) || '';
+    const isEmptyQuery = !queryLower;
+    const maxResults = 50; // Limit results for performance
+
+    for (const zoneId in worldAreas) {
+      if (results.length >= maxResults) break;
+
+      const zone = worldAreas[zoneId];
+      if (!zone) continue;
+
+      let matches = false;
+      let displayValue = '';
+
+      if (searchType === 'name') {
+        if (zone.name) {
+          matches = isEmptyQuery || zone.name.toLowerCase().includes(queryLower);
+          if (matches) displayValue = zone.name;
+        }
+      } else if (searchType === 'tag') {
+        if (Array.isArray(zone.tags)) {
+          for (const tag of zone.tags) {
+            if (tag) {
+              matches = isEmptyQuery || tag.toLowerCase().includes(queryLower);
+              if (matches) {
+                displayValue = tag;
+                break;
+              }
+            }
+          }
+        }
+      } else if (searchType === 'area_type_tag') {
+        if (Array.isArray(zone.area_type_tags)) {
+          for (const areaTypeTag of zone.area_type_tags) {
+            if (areaTypeTag) {
+              matches = isEmptyQuery || areaTypeTag.toLowerCase().includes(queryLower);
+              if (matches) {
+                displayValue = areaTypeTag;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (matches && displayValue && !results.some(r => r.value === displayValue)) {
+        results.push({
+          value: displayValue,
+          type: searchType
+        });
+      }
+    }
+
+    return results;
+  });
+
+  // IPC handler for saving soundtrack to current file
+  ipcMain.handle('saveSoundtrack', (event, soundtrackData) => {
+    try {
+      const currentFile = settings.getSync('soundtrack');
+      if (!currentFile) {
+        return { success: false, error: 'No soundtrack file loaded' };
+      }
+
+      // Validate soundtrack structure
+      if (!soundtrackData.tracks || !Array.isArray(soundtrackData.tracks)) {
+        return { success: false, error: 'Invalid soundtrack format: missing tracks array' };
+      }
+
+      // Ensure options object exists
+      if (!soundtrackData.options) {
+        soundtrackData.options = {
+          randomOnNoMatch: false
+        };
+      }
+
+      // Write to file
+      const success = writeFile(currentFile, JSON.stringify(soundtrackData, null, '\t'));
+      if (!success) {
+        return { success: false, error: 'Failed to write file' };
+      }
+
+      // Update in-memory soundtrack
+      soundtrack = soundtrackData;
+
+      // Reload to ensure consistency
+      loadSoundtrack(currentFile);
+
+      return { success: true, file: currentFile };
+    } catch (err) {
+      console.error('Error saving soundtrack:', err);
+      return { success: false, error: err.message || 'Unknown error' };
+    }
+  });
+
+  // IPC handler for saving soundtrack to new file
+  ipcMain.handle('saveSoundtrackAs', (event, soundtrackData, filePath) => {
+    try {
+      // Validate soundtrack structure
+      if (!soundtrackData.tracks || !Array.isArray(soundtrackData.tracks)) {
+        return { success: false, error: 'Invalid soundtrack format: missing tracks array' };
+      }
+
+      // Ensure options object exists
+      if (!soundtrackData.options) {
+        soundtrackData.options = {
+          randomOnNoMatch: false
+        };
+      }
+
+      // Ensure file has .soundtrack extension
+      let finalPath = filePath;
+      if (!finalPath.endsWith('.soundtrack')) {
+        finalPath = finalPath + '.soundtrack';
+      }
+
+      // Write to file
+      const success = writeFile(finalPath, JSON.stringify(soundtrackData, null, '\t'));
+      if (!success) {
+        return { success: false, error: 'Failed to write file' };
+      }
+
+      // Update settings and load new soundtrack
+      settings.setSync('soundtrack', finalPath);
+      soundtrack = soundtrackData;
+      loadSoundtrack(finalPath);
+
+      // Broadcast state update
+      broadcastStateUpdate();
+
+      return { success: true, file: finalPath };
+    } catch (err) {
+      console.error('Error saving soundtrack as:', err);
+      return { success: false, error: err.message || 'Unknown error' };
+    }
+  });
+
+  // IPC handler for applying imported soundtrack (no file path; Save will be Save As)
+  ipcMain.handle('applyImportedSoundtrack', (event, soundtrackData) => {
+    try {
+      if (!soundtrackData.tracks || !Array.isArray(soundtrackData.tracks)) {
+        return { success: false, error: 'Invalid soundtrack format: missing tracks array' };
+      }
+      if (!soundtrackData.options) {
+        soundtrackData.options = { unlinkedZoneBehavior: 'random' };
+      } else if (!['random', 'silence', 'keep'].includes(soundtrackData.options.unlinkedZoneBehavior)) {
+        soundtrackData.options.unlinkedZoneBehavior = soundtrackData.options.randomOnNoMatch === true ? 'random' : 'keep';
+      }
+      soundtrack = soundtrackData;
+      settings.setSync('soundtrack', '');
+      broadcastStateUpdate();
+      return { success: true };
+    } catch (err) {
+      console.error('Error applying imported soundtrack:', err);
+      return { success: false, error: err.message || 'Unknown error' };
+    }
+  });
+}
+
+module.exports = {
+  run,
+  updateAvailable,
+  updateDownloading,
+  broadcastStateUpdate,
+};

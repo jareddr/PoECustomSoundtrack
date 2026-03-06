@@ -1,8 +1,8 @@
-# Path of Exile Custom Soundtrack
+# Exile Tunes
 
-![](pietyd2.png)
+![](exile_tunes.png)
 
-Updated for Keepers of the Flame 3.27
+Updated for Mirage 3.28
 
 Usage and customization guide here: https://www.youtube.com/watch?v=DyfBy1K1Y1s
 
@@ -16,11 +16,25 @@ I did **not** build this because I think the Path of Exile soundtrack is bad, in
 
 ## To Use
 
-Load up the program, use the crappy interface to choose the folder where you installed Path of Exile. Don't worry, it doesn't write any files, it just reads the `Path of Exile/Logs/Client.txt` file to detect when your in game area changes.
+Load up the program, use the ~~crappy~~ amazing interface to choose the folder where you installed Path of Exile. Don't worry, it doesn't write any files, it just reads the `Path of Exile/Logs/Client.txt` file to detect when your in game area changes.
 
-Turn your in game music volume down to 0
+Turn your in game music volume down to 0 and enable gameplay event choices. 
 
-Switch areas in game, you should be hearing Diablo II music!
+Switch areas in game, you should be hearing Diablo II music.
+
+Keep the d2 soundtrack or make your own with the new soundtrack editor.  Add tracks from youtube and assign them to tilesets or specific zones.  
+
+## What's with the interface?
+
+I learned to program back in the AOL days where as a teen when 'proggies' were companion programs to get up to digital mischief, like distributing warez and kicking your nemeses offline.  This was also the era where you used Winamp to listen to mp3s.  If you were like me, you probably spent an inordinate amount of time finding the perfect winamp skin and then changing it again the next day.
+
+The new Exile Tunes interface is my homage to a nostalgic era of apps brought forward to join with my love of Path of Exile.
+
+## AI?
+
+The original version of this program was written well before anyone knew what an LLM or diffusion model was.  That said, I made heavy use of a coding agent in the most recent updates where I modernized the stack and added new features like the soundtrack editor.
+
+I also used AI for the art work.
 
 ## Download
 
@@ -34,23 +48,168 @@ This program merely monitors the path of exile client log file on your computer.
 
 If anyone wants to contribute by adding features, making improvements or fixing bugs, I'd be delighted. Just make a pull request and I'll check out what you've done. The code is a sloppy mess so don't worry about coding style.
 
-## Contributing
+## Development Environment
 
-As you can tell from the video guide where I was playing an RF totem chieftan, this is pretty old. I have not kept up with new versions of any of the libraries. To run this on your local machine I believe you need to use node version 10.24.1.
+### Prerequisites
 
-## Dev Environment.
+- **Node.js**: Version 20.x LTS or higher (required)
+- **npm**: Comes with Node.js
+- **Git**: For cloning the repository
 
-Use Node Version Manager (nvm) or N to drop down to node version `10.24.1`.
+### Setup
 
-`npm install` will download all the requirements
-`npm run` should launch the app.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/jareddr/PoECustomSoundtrack.git
+   cd PoECustomSoundtrack
+   ```
 
-## Deploying (note to self)
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-- Update package.json and increment the version.
-- Create a draft release on your github repo with the tag vX.Y.Z where X.Y.Z is version from package.json, save the draft.
-- Set an environment variable for your github token with access to make releases on the repo, GH_TOKEN=
-- Commit and push your changes
-- run `npm run release` to invoke electron-builder
-- This must be done on a windows machine to build the windows installer/zip or a linux machine to build the appImage and snap files.
-- Refresh the draft release on github.com and you should see the artifacts attached. If everything looks good publish the new release.
+3. Run the app in development mode:
+   ```bash
+   npm run electron:dev
+   ```
+
+   This will launch the app with DevTools open and hot-reload enabled.
+
+## Building and Deployment
+
+### Building Locally
+
+To build the application for your current platform without publishing:
+
+```bash
+npm run dist
+```
+
+This will create the distributable files in the `dist/` directory.
+
+### Building for Release (GitHub)
+
+The app uses `electron-builder` to create installers and publish to GitHub Releases. The auto-update system checks GitHub Releases for updates.
+
+#### Prerequisites for Release
+
+1. **GitHub Token**: You need a GitHub personal access token with the `repo` scope
+   - Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+   - Generate a new token with `repo` scope
+   - Save this token securely
+
+2. **Platform-Specific Builds**:
+   - **Windows builds** must be done on a Windows machine
+   - **Linux builds** (AppImage, snap) must be done on a Linux machine
+   - **macOS builds** must be done on a macOS machine
+
+#### Release Process
+
+**Option A: GitHub Actions (recommended)** — Windows (zip + NSIS) and Linux (AppImage) are built in CI and attached to the release:
+
+1. Update the version in `package.json` (e.g. `1.9.9` → `1.10.0`).
+2. Commit, push, then create and push a tag matching the version:
+   ```bash
+   git add package.json
+   git commit -m "Release v1.10.0"
+   git push origin main
+   git tag v1.10.0
+   git push origin v1.10.0
+   ```
+3. The [Release workflow](.github/workflows/release.yml) runs, builds both platforms, and creates a GitHub Release for that tag with all artifacts attached. No `GH_TOKEN` or draft release needed.
+
+**Option B: Manual release** (single platform, or when CI is not used):
+
+1. **Update Version**:
+   - Edit `package.json` and increment the version number (e.g., `1.6.1` → `1.6.2`)
+
+2. **Create Draft Release on GitHub**:
+   - Go to your GitHub repository
+   - Navigate to Releases → Draft a new release
+   - Create a tag: `vX.Y.Z` (e.g., `v1.6.2`) matching the version in `package.json`
+   - Add release notes
+   - **Save as draft** (do not publish yet)
+
+3. **Set GitHub Token**:
+   - **Windows (PowerShell)**:
+     ```powershell
+     $env:GH_TOKEN="your_github_token_here"
+     ```
+   - **Windows (Command Prompt)**:
+     ```cmd
+     set GH_TOKEN=your_github_token_here
+     ```
+   - **Linux/macOS**:
+     ```bash
+     export GH_TOKEN="your_github_token_here"
+     ```
+
+4. **Commit and Push Changes**:
+   ```bash
+   git add .
+   git commit -m "Release v1.6.2"
+   git push origin main
+   ```
+
+5. **Build and Publish**:
+   ```bash
+   npm run release
+   ```
+   
+   This command will:
+   - Build the application for the current platform
+   - Upload the built artifacts to the draft GitHub release
+   - Create the necessary update metadata files
+
+6. **Publish the Release**:
+   - Go back to GitHub and refresh the draft release page
+   - Verify that all artifacts are attached (installer, zip, blockmap, etc.)
+   - If everything looks good, click "Publish release"
+   - The auto-update system will now detect this release for users
+
+### Auto-Update System
+
+The app uses `electron-updater` to automatically check for and download updates from GitHub Releases. The system:
+
+- Checks for updates when the app starts
+- Prompts users when an update is available
+- Downloads updates in the background
+- Installs updates on user confirmation
+
+The auto-update system requires:
+- GitHub Releases to be properly configured (handled by `electron-builder`)
+- The app to be built with `electron-builder` (not just `npm run dist`)
+- GitHub token to be set when running `npm run release`
+
+## Troubleshooting
+
+### Development Issues
+
+**App won't start:**
+- Ensure you're using Node.js 20.x LTS or higher
+- Delete `node_modules` and run `npm install` again
+- Check that all dependencies installed correctly
+
+**Port already in use:**
+- Close other applications using these ports
+- Or modify the port range in `main.js` if needed
+
+### Build Issues
+
+**Build fails with "GH_TOKEN not set":**
+- Make sure you've set the `GH_TOKEN` environment variable
+- Verify the token has the `repo` scope
+- On Windows, ensure you're using the correct syntax for your shell (PowerShell vs CMD)
+
+**Build artifacts not appearing on GitHub:**
+- Verify the draft release exists with the correct tag
+- Check that the GitHub token has proper permissions
+- Ensure you're running `npm run release` (not `npm run dist`)
+- Check the build output for error messages
+
+**Auto-update not working:**
+- Verify the release is published (not just a draft)
+- Check that `latest.yml` and installer files are in the GitHub release
+- Ensure the app was built with `electron-builder` (not manually)
+- Check the app logs (stored in user data directory) for update errors

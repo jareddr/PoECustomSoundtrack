@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Exocet Light';
+  src: url('/EXL_____.eot?') format('eot'), 
+       url('/EXL_____.woff') format('woff'),
+       url('/EXL_____.ttf') format('truetype'),
+       url('/EXL_____.svg#ExocetLight') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@layer components {
+  .d2button {
+    @apply bg-d2-button rounded-d2 border-2 border-d2-button-border inline-block cursor-pointer text-d2-text-dark text-xs font-bold py-0.5 px-1 mt-1.5 no-underline font-sans;
+  }
+  
+  .d2button:hover {
+    @apply bg-d2-button-hover;
+  }
+  
+  .d2button:active {
+    @apply relative top-px;
+  }
+  
+  .btn-primary {
+    @apply bg-d2-primary;
+  }
+  
+  .btn-secondary {
+    @apply bg-d2-secondary;
+  }
+
+  /* Bronze theme: settings and playlist editor modal/panel look */
+  .bronze-panel {
+    @apply rounded bg-bronze-bg border border-bronze-border;
+    box-shadow: inset 0 1px 0 rgba(176, 139, 87, 0.08);
+  }
+
+  .bronze-overlay {
+    background: radial-gradient(ellipse at center, rgba(31, 26, 18, 0.4) 0%, rgba(0, 0, 0, 0.7) 100%);
+  }
+
+  .bronze-section-header {
+    @apply flex items-center gap-2 uppercase tracking-wide font-exocet font-bold text-sm text-bronze-title;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  }
+
+  .bronze-section-divider {
+    @apply border-0 border-b border-bronze-border opacity-50;
+  }
+
+  .bronze-label {
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply text-bronze-label;
+  }
+
+  .bronze-btn-primary {
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-3 py-1.5 font-bold text-sm cursor-pointer border border-bronze-border bg-bronze-button text-bronze-buttonText transition-colors;
+  }
+
+  .bronze-btn-primary:hover:not(:disabled) {
+    @apply bg-bronze-buttonHover;
+  }
+
+  .bronze-btn-primary:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .bronze-btn-secondary {
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-3 py-1.5 font-bold text-sm cursor-pointer border border-bronze-border bg-bronze-panel text-bronze-title transition-colors;
+  }
+
+  .bronze-btn-secondary:hover:not(:disabled) {
+    @apply text-bronze-buttonHover border-bronze-buttonHover;
+  }
+
+  .bronze-btn-secondary:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .bronze-btn-accent {
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-3 py-1.5 font-bold text-sm cursor-pointer border transition-colors;
+    background-color: #0ba5a5;
+    color: #1F1A12;
+    border-color: #0e8a8a;
+  }
+
+  .bronze-btn-accent:hover:not(:disabled) {
+    background-color: #0dbfbf;
+    border-color: #0ba5a5;
+  }
+
+  .bronze-btn-accent:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .bronze-input {
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-2 py-1 text-sm bg-bronze-panel text-bronze-label border border-bronze-border transition-colors focus:outline-none focus:ring-2 focus:ring-bronze-border/50 focus:ring-offset-0 focus:ring-offset-bronze-bg;
+  }
+
+  .bronze-input::placeholder {
+    @apply text-bronze-label opacity-60;
+  }
+
+  .bronze-select {
+    font-family: "IM Fell DW Pica", Georgia, serif;
+    @apply rounded px-2 py-1 text-sm appearance-none cursor-pointer bg-bronze-panel text-bronze-label border border-bronze-border transition-colors focus:outline-none focus:ring-2 focus:ring-bronze-border/50 focus:ring-offset-0 focus:ring-offset-bronze-bg;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23B08B57'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-size: 1rem;
+    background-repeat: no-repeat;
+    background-position: right 0.35rem center;
+    padding-right: 1.5rem;
+  }
+}
+

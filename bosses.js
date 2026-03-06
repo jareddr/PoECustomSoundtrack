@@ -1,4 +1,4 @@
-let dialog = {
+const dialog = {
     "Piety: I recognise that pretty face. Grand Arena, Theopolis. I've a future in mind that I think would suit you, Duelist.": "Brutus, Lord Incarcerator",
     "Piety: Curious. It moves like a killer yet reeks of thaumaturgy. Would that I could observe you more closely, my mysterious Shadow.": "Brutus, Lord Incarcerator",
     "Piety: Your answer's here, heretic. In Wraeclast. But I don't think you'll like it very much.": "Brutus, Lord Incarcerator",
@@ -57,5 +57,5 @@ let dialog = {
 }
 
 module.exports = {
-	dialog: dialog
-}
+  dialog,
+};
