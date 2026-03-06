@@ -212,10 +212,28 @@ function trackMatchesZone(track, zone) {
   return false;
 }
 
+/** Sentinel returned by getTrack when unlinkedZoneBehavior is 'silence' */
+const UNLINKED_SILENCE = { _unlinkedSilence: true };
+
+/**
+ * Get unlinked zone behavior: 'random' | 'silence' | 'keep'. Default 'random'.
+ */
+function getUnlinkedZoneBehavior() {
+  const opt = soundtrack.options && soundtrack.options.unlinkedZoneBehavior;
+  if (opt === 'random' || opt === 'silence' || opt === 'keep') {
+    return opt;
+  }
+  // Backward compat: old randomOnNoMatch
+  if (soundtrack.options && soundtrack.options.randomOnNoMatch === true) {
+    return 'random';
+  }
+  return 'keep';
+}
+
 /**
  * Get a track for the given area name
  * @param {string} areaName - Name of the area/zone
- * @returns {Object|false} Track object or false if no track found
+ * @returns {Object|typeof UNLINKED_SILENCE|false} Track object, UNLINKED_SILENCE to stop, or false to keep playing
  */
 function getTrack(areaName) {
   // First, try to match by name directly (for special cases like login, bosses, etc.)
@@ -232,16 +250,20 @@ function getTrack(areaName) {
     return trackData ? generateTrack(trackData) : false;
   }
 
+  const unlinkedBehavior = getUnlinkedZoneBehavior();
+
   // Look up zone in world_areas.json for tag/area_type_tag matching
   const zone = findZoneByName(areaName);
   if (!zone) {
     // Zone not found in world_areas.json and no name match
-    // If random fallback is enabled, return random track
-    if (soundtrack.options && soundtrack.options.randomOnNoMatch) {
+    if (unlinkedBehavior === 'random') {
       const trackData = randomElement(soundtrack.tracks);
       return trackData ? generateTrack(trackData) : false;
     }
-    return false;
+    if (unlinkedBehavior === 'silence') {
+      return UNLINKED_SILENCE;
+    }
+    return false; // keep
   }
 
   // Find all tracks that match this zone by tags or area_type_tags
@@ -272,13 +294,15 @@ function getTrack(areaName) {
   });
 
   if (matchingTracks.length === 0) {
-    // No matches found
-    // If random fallback is enabled, return random track
-    if (soundtrack.options && soundtrack.options.randomOnNoMatch) {
+    // No matches found for this zone
+    if (unlinkedBehavior === 'random') {
       const trackData = randomElement(soundtrack.tracks);
       return trackData ? generateTrack(trackData) : false;
     }
-    return false;
+    if (unlinkedBehavior === 'silence') {
+      return UNLINKED_SILENCE;
+    }
+    return false; // keep
   }
 
   // Multiple matches - pick one at random
@@ -312,6 +336,20 @@ function sendTrackChange(track) {
     mainWindow.webContents.send('changeTrack', serializableTrack);
   } catch (err) {
     console.error('Error sending changeTrack:', err);
+  }
+}
+
+/**
+ * Tell renderer to stop playback (unload active track) for unlinked zone silence
+ */
+function sendStopTrack() {
+  if (!mainWindow || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
+  try {
+    mainWindow.webContents.send('stopTrack');
+  } catch (err) {
+    console.error('Error sending stopTrack:', err);
   }
 }
 
@@ -356,6 +394,18 @@ function parseLogLine(line) {
 
   const areaCode = newArea[1];
   const track = getTrack(areaCode);
+
+  // Unlinked zone: silence — stop playback and update zone display
+  if (track && track._unlinkedSilence) {
+    currentTrackName = '';
+    currentTrackId = '';
+    currentZoneName = areaCode === 'login' ? 'Login Screen' : (boss || newArea[1] || areaCode);
+    sendStopTrack();
+    broadcastStateUpdate();
+    return;
+  }
+
+  // Unlinked zone: keep playing — do nothing
   if (!track) {
     return;
   }
@@ -721,13 +771,17 @@ function loadSoundtrack(file) {
     console.warn('Soundtrack file may be missing matches arrays in tracks');
   }
 
-  // Ensure options object exists with defaults
+  // Ensure options object exists with unlinkedZoneBehavior (default 'random')
   if (!newSoundtrack.options) {
-    newSoundtrack.options = {
-      randomOnNoMatch: false
-    };
-  } else if (typeof newSoundtrack.options.randomOnNoMatch !== 'boolean') {
-    newSoundtrack.options.randomOnNoMatch = false;
+    newSoundtrack.options = { unlinkedZoneBehavior: 'random' };
+  } else {
+    const valid = ['random', 'silence', 'keep'];
+    if (!valid.includes(newSoundtrack.options.unlinkedZoneBehavior)) {
+      // Migrate from legacy randomOnNoMatch
+      newSoundtrack.options.unlinkedZoneBehavior = newSoundtrack.options.randomOnNoMatch === true
+        ? 'random'
+        : 'keep';
+    }
   }
 
   soundtrack = newSoundtrack;
@@ -1082,6 +1136,27 @@ function run(browserWindow) {
       return { success: true, file: finalPath };
     } catch (err) {
       console.error('Error saving soundtrack as:', err);
+      return { success: false, error: err.message || 'Unknown error' };
+    }
+  });
+
+  // IPC handler for applying imported soundtrack (no file path; Save will be Save As)
+  ipcMain.handle('applyImportedSoundtrack', (event, soundtrackData) => {
+    try {
+      if (!soundtrackData.tracks || !Array.isArray(soundtrackData.tracks)) {
+        return { success: false, error: 'Invalid soundtrack format: missing tracks array' };
+      }
+      if (!soundtrackData.options) {
+        soundtrackData.options = { unlinkedZoneBehavior: 'random' };
+      } else if (!['random', 'silence', 'keep'].includes(soundtrackData.options.unlinkedZoneBehavior)) {
+        soundtrackData.options.unlinkedZoneBehavior = soundtrackData.options.randomOnNoMatch === true ? 'random' : 'keep';
+      }
+      soundtrack = soundtrackData;
+      settings.setSync('soundtrack', '');
+      broadcastStateUpdate();
+      return { success: true };
+    } catch (err) {
+      console.error('Error applying imported soundtrack:', err);
       return { success: false, error: err.message || 'Unknown error' };
     }
   });

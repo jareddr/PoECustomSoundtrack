@@ -7,7 +7,12 @@
   export let onSave = () => {};
 
   // State
-  let soundtrackData = { tracks: [], options: { randomOnNoMatch: false } };
+  const UNLINKED_ZONE_OPTIONS = [
+    { value: 'random', label: 'Play a random track' },
+    { value: 'silence', label: 'Silence' },
+    { value: 'keep', label: 'Keep playing active track' },
+  ];
+  let soundtrackData = { tracks: [], options: { unlinkedZoneBehavior: 'random' } };
   let editingTrackIndex = null;
   let editingTrack = null;
   let showAddTrackModal = false;
@@ -99,14 +104,23 @@
     }
   }
 
+  function normalizeOptions(options) {
+    if (!options) return;
+    const valid = ['random', 'silence', 'keep'];
+    if (!valid.includes(options.unlinkedZoneBehavior)) {
+      options.unlinkedZoneBehavior = options.randomOnNoMatch === true ? 'random' : 'keep';
+    }
+  }
+
   async function loadSoundtrackData() {
     try {
       const result = await ipcRenderer.invoke('getSoundtrackData');
       soundtrackData = JSON.parse(JSON.stringify(result.data)); // Deep copy
       currentFilePath = result.filePath || '';
       if (!soundtrackData.options) {
-        soundtrackData.options = { randomOnNoMatch: false };
+        soundtrackData.options = { unlinkedZoneBehavior: 'random' };
       }
+      normalizeOptions(soundtrackData.options);
       originalDataJson = JSON.stringify(soundtrackData);
     } catch (err) {
       console.error('Error loading soundtrack data:', err);
@@ -160,8 +174,8 @@
         matches: [...newTrackMatches]
       };
 
-      soundtrackData.tracks.push(newTrack);
-      
+      soundtrackData.tracks = [...soundtrackData.tracks, newTrack];
+
       // Reset form and close modal
       newTrackName = '';
       newTrackUrl = '';
@@ -366,7 +380,123 @@
     return 'match-pill-default';
   }
 
+  // Import/Export: Base64 encode/decode (Electron renderer has Buffer)
+  function encodeSoundtrack(data) {
+    const json = JSON.stringify(data);
+    return Buffer.from(json, 'utf8').toString('base64');
+  }
+
+  function decodeSoundtrack(encoded) {
+    const json = Buffer.from(encoded.trim(), 'base64').toString('utf8');
+    return JSON.parse(json);
+  }
+
+  function validateSoundtrackData(data) {
+    if (!data || typeof data !== 'object') return 'Invalid: not an object';
+    if (!data.tracks || !Array.isArray(data.tracks)) return 'Invalid soundtrack format: missing tracks array';
+    for (let i = 0; i < data.tracks.length; i++) {
+      const t = data.tracks[i];
+      if (!t || typeof t !== 'object') return `Invalid track at index ${i}`;
+      if (t.matches !== undefined && !Array.isArray(t.matches)) return `Invalid track at index ${i}: matches must be an array`;
+    }
+    return null;
+  }
+
+  // Export/Import modal state
+  let showExportModal = false;
+  let showImportModal = false;
+  let exportEncodedString = '';
+  let importInputValue = '';
+  let importError = '';
+
+  function openExportModal() {
+    exportEncodedString = encodeSoundtrack(soundtrackData);
+    showExportModal = true;
+  }
+
+  function closeExportModal() {
+    showExportModal = false;
+    exportEncodedString = '';
+  }
+
+  async function copyExportString() {
+    try {
+      await navigator.clipboard.writeText(exportEncodedString);
+      errorMessage = '';
+    } catch (err) {
+      errorMessage = 'Failed to copy to clipboard';
+    }
+  }
+
+  function openImportModal() {
+    importInputValue = '';
+    importError = '';
+    showImportModal = true;
+  }
+
+  function closeImportModal() {
+    showImportModal = false;
+    importInputValue = '';
+    importError = '';
+  }
+
+  async function doImport() {
+    const raw = importInputValue.trim();
+    if (!raw) {
+      importError = 'Please paste an encoded soundtrack string.';
+      return;
+    }
+    let data;
+    try {
+      data = decodeSoundtrack(raw);
+    } catch (err) {
+      importError = err.message || 'Invalid encoding. The string may be corrupted or not a valid exported soundtrack.';
+      return;
+    }
+    const validationError = validateSoundtrackData(data);
+    if (validationError) {
+      importError = validationError;
+      return;
+    }
+    if (!data.options) {
+      data.options = { unlinkedZoneBehavior: 'random' };
+    } else {
+      normalizeOptions(data.options);
+      if (!['random', 'silence', 'keep'].includes(data.options.unlinkedZoneBehavior)) {
+        data.options.unlinkedZoneBehavior = 'random';
+      }
+    }
+    const result = await ipcRenderer.invoke('applyImportedSoundtrack', data);
+    if (!result.success) {
+      importError = result.error || 'Failed to apply imported soundtrack';
+      return;
+    }
+    soundtrackData = JSON.parse(JSON.stringify(data));
+    currentFilePath = '';
+    // Leave originalDataJson unchanged so we stay dirty and warn on close without save
+    closeImportModal();
+    errorMessage = '';
+  }
+
+  async function newSoundtrack() {
+    cancelEditTrack();
+    const empty = { tracks: [], options: { unlinkedZoneBehavior: 'random' } };
+    const result = await ipcRenderer.invoke('applyImportedSoundtrack', empty);
+    if (!result.success) {
+      errorMessage = result.error || 'Failed to create new soundtrack';
+      return;
+    }
+    soundtrackData = JSON.parse(JSON.stringify(empty));
+    currentFilePath = '';
+    // Leave originalDataJson unchanged so we stay dirty and warn on close without save
+    errorMessage = '';
+  }
+
   async function saveSoundtrack() {
+    if (!currentFilePath) {
+      await saveSoundtrackAs();
+      return;
+    }
     try {
       saving = true;
       errorMessage = '';
@@ -518,6 +648,22 @@
       {errorMessage}
     </div>
   {/if}
+
+  <!-- Soundtrack options: unlinked zone behavior -->
+  <div class="mb-4 p-3 rounded border border-bronze-border bg-bronze-panel flex-shrink-0">
+    <label for="unlinked-zone-behavior" class="block text-sm font-medium bronze-label mb-2">
+      When entering a zone not linked to any track
+    </label>
+    <select
+      id="unlinked-zone-behavior"
+      class="bronze-select w-full max-w-md"
+      bind:value={soundtrackData.options.unlinkedZoneBehavior}
+    >
+      {#each UNLINKED_ZONE_OPTIONS as opt}
+        <option value={opt.value}>{opt.label}</option>
+      {/each}
+    </select>
+  </div>
 
   <!-- Tracks List -->
   <div class="flex-1 flex flex-col min-h-0 mb-4">
@@ -715,14 +861,40 @@
 
   <!-- Save / Load Buttons -->
   <div class="editor-footer flex gap-2 justify-between items-center flex-shrink-0 pt-4 mt-auto border-t border-bronze-border/60 bg-bronze-bg/50 -mx-6 px-6 py-4">
-    <button
-      on:click={loadSoundtrackFile}
-      class="bronze-btn-accent"
-      disabled={saving || editingTrackIndex !== null}
-      title="Load a different soundtrack file"
-    >
-      Load
-    </button>
+    <div class="flex gap-2">
+      <button
+        on:click={loadSoundtrackFile}
+        class="bronze-btn-accent"
+        disabled={saving || editingTrackIndex !== null}
+        title="Load a different soundtrack file"
+      >
+        Load
+      </button>
+      <button
+        on:click={newSoundtrack}
+        class="bronze-btn-secondary"
+        disabled={saving || editingTrackIndex !== null}
+        title="Start a new empty soundtrack"
+      >
+        New
+      </button>
+      <button
+        on:click={openExportModal}
+        class="bronze-btn-secondary"
+        disabled={saving || editingTrackIndex !== null}
+        title="Export soundtrack as encoded string"
+      >
+        Export
+      </button>
+      <button
+        on:click={openImportModal}
+        class="bronze-btn-secondary"
+        disabled={saving || editingTrackIndex !== null}
+        title="Import soundtrack from encoded string"
+      >
+        Import
+      </button>
+    </div>
     <div class="flex gap-2">
       <button
         on:click={() => requestClose('button')}
@@ -895,6 +1067,117 @@
           disabled={loadingYouTube || saving || !newTrackUrl.trim()}
         >
           Add Track
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Export Modal -->
+{#if showExportModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-non-interactive-element-interactions -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-6 bronze-overlay bg-black/60"
+    on:click={closeExportModal}
+    on:keydown={(e) => e.key === 'Escape' && closeExportModal()}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="export-modal-title"
+  >
+    <div
+      class="bronze-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 mx-4"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+    >
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="export-modal-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
+          Export Soundtrack
+        </h3>
+        <button
+          on:click={closeExportModal}
+          class="p-1 rounded transition-colors text-bronze-title hover:text-bronze-buttonHover"
+          title="Close"
+        >
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <p class="text-sm text-bronze-label/80 mb-2">Copy this encoded string to share or backup your soundtrack:</p>
+      <textarea
+        readonly
+        value={exportEncodedString}
+        class="w-full bronze-input font-mono text-sm min-h-[120px] resize-y"
+        aria-label="Exported soundtrack string"
+      />
+      <div class="flex gap-2 justify-end mt-3">
+        <button
+          on:click={copyExportString}
+          class="bronze-btn-primary"
+        >
+          Copy
+        </button>
+        <button
+          on:click={closeExportModal}
+          class="bronze-btn-secondary"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Import Modal -->
+{#if showImportModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-no-non-interactive-element-interactions -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-6 bronze-overlay bg-black/60"
+    on:click={closeImportModal}
+    on:keydown={(e) => e.key === 'Escape' && closeImportModal()}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="import-modal-title"
+  >
+    <div
+      class="bronze-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 mx-4"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+    >
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="import-modal-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
+          Import Soundtrack
+        </h3>
+        <button
+          on:click={closeImportModal}
+          class="p-1 rounded transition-colors text-bronze-title hover:text-bronze-buttonHover"
+          title="Close"
+        >
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <p class="text-sm text-bronze-label/80 mb-2">Paste an encoded soundtrack string below:</p>
+      <textarea
+        bind:value={importInputValue}
+        class="w-full bronze-input font-mono text-sm min-h-[120px] resize-y"
+        placeholder="Paste encoded soundtrack here"
+        aria-label="Encoded soundtrack string to import"
+      />
+      {#if importError}
+        <div class="mt-3 p-2 rounded border border-bronze-border bg-bronze-panel text-bronze-label text-sm">
+          {importError}
+        </div>
+      {/if}
+      <div class="flex gap-2 justify-end mt-3">
+        <button
+          on:click={closeImportModal}
+          class="bronze-btn-secondary"
+        >
+          Cancel
+        </button>
+        <button
+          on:click={doImport}
+          class="bronze-btn-primary"
+        >
+          Import
         </button>
       </div>
     </div>

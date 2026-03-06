@@ -551,7 +551,7 @@ const soundtrack = {
 		}
 	],
 	"options": {
-		"randomOnNoMatch": true
+		"unlinkedZoneBehavior": "random"
 	}
 };
 

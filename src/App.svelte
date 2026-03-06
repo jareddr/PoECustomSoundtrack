@@ -46,6 +46,13 @@
       }
     });
 
+    ipcRenderer.on('stopTrack', () => {
+      if (playerController) {
+        playerController.fadeout();
+      }
+      isPlaying = false;
+    });
+
     ipcRenderer.on('updateState', (event, data) => {
       updateState(data);
     });
@@ -61,6 +68,7 @@
   onDestroy(() => {
     // Remove IPC listeners
     ipcRenderer.removeAllListeners('changeTrack');
+    ipcRenderer.removeAllListeners('stopTrack');
     ipcRenderer.removeAllListeners('updateState');
     ipcRenderer.removeAllListeners('errorMessage');
   });
@@ -68,11 +76,14 @@
   function updateState(data) {
     poePath = data.path.replace(/\\/g, '/');
 
-    let name = data.soundtrack.replace(/\\/g, '/');
-    if (name.match(/([^/]+)\.soundtrack$/)) {
-      name = name.match(/([^/\\]+)\.soundtrack$/)[1];
+    let name = (data.soundtrack || '').replace(/\\/g, '/');
+    if (!name) {
+      soundtrackName = 'Unsaved soundtrack';
+    } else if (name.match(/([^/]+)\.soundtrack$/)) {
+      soundtrackName = name.match(/([^/\\]+)\.soundtrack$/)[1];
+    } else {
+      soundtrackName = name;
     }
-    soundtrackName = name;
 
     poePathValid = data.valid;
     volumeValid = data.volume === 0;
