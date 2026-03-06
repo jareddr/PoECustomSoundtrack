@@ -17,6 +17,7 @@
   let showSettings = false;
   let currentZoneName = '';
   let currentTrackName = '';
+  let soundtrackTrackCount = 0;
   let hasCheckedInitialState = false;
 
   let playerController = null;
@@ -54,7 +55,8 @@
     });
 
     ipcRenderer.on('updateState', (event, data) => {
-      updateState(data);
+      if (data) updateState(data);
+      else ipcRenderer.send('updateState');
     });
 
     ipcRenderer.on('errorMessage', (event, data) => {
@@ -63,10 +65,23 @@
 
     // Request initial state
     ipcRenderer.send('updateState');
+    // Request again after a short delay in case first response was stale (e.g. track count)
+    const retryTimer = setTimeout(() => ipcRenderer.send('updateState'), 400);
+
+    // Refresh state when window gains focus (e.g. after loading file in editor)
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      clearTimeout(retryTimer);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
   });
 
+  function handleWindowFocus() {
+    ipcRenderer.send('updateState');
+  }
+
   onDestroy(() => {
-    // Remove IPC listeners
     ipcRenderer.removeAllListeners('changeTrack');
     ipcRenderer.removeAllListeners('stopTrack');
     ipcRenderer.removeAllListeners('updateState');
@@ -98,6 +113,7 @@
     if (data.currentTrackName) {
       currentTrackName = data.currentTrackName;
     }
+    soundtrackTrackCount = typeof data.soundtrackTrackCount === 'number' ? data.soundtrackTrackCount : 0;
 
     const oldVolume = playerVolume;
     const newVolume = data.playerVolume ? parseInt(data.playerVolume) : 25;
@@ -392,21 +408,38 @@
       </div>
 
       <!-- Right Side: Zone and Track Info -->
-      <div class="flex flex-col gap-4 flex-1 border-red-500 border-0 pt-4 w-[175px] overflow-hidden font-pica">
-        <div>
-          <div class="text-lg font-exocet font-bold mb-2">Current Area</div>
+      <div class="flex flex-col gap-1.5 flex-1 border-red-500 border-0 pt-2 pr-1 w-[175px] overflow-hidden font-pica min-h-0">
+        <div class="min-w-0">
+          <div class="text-sm font-exocet font-bold mb-0.5">Loaded Soundtrack</div>
+          <div class="text-xs text-d2-text/80 truncate" title={soundtrackName}>{soundtrackName}</div>
+        </div>
+        <div class="min-w-0">
+          <div class="text-sm font-exocet font-bold mb-0.5">Current Area</div>
           {#if currentZoneName}
-            <div class="text-sm font-bold">{currentZoneName}</div>
+            <div class="text-xs font-bold truncate" title={currentZoneName}>{currentZoneName}</div>
           {:else}
-            <div class="text-sm font-bold text-d2-text/60">No zone detected</div>
+            <div class="text-xs font-bold text-d2-text/60">No zone detected</div>
           {/if}
         </div>
-
-        <div>
-          <div class="text-lg font-exocet font-bold mb-2">Now Playing</div>
-          {#if currentTrackName}
+        <div class="min-w-0 flex-1 min-h-0 flex flex-col">
+          <div class="text-sm font-exocet font-bold mb-0.5 flex-shrink-0">Now Playing</div>
+          {#if soundtrackTrackCount === 0}
+            <div class="text-xs text-d2-text/80 leading-tight flex-shrink-0">
+              No tracks are loaded, please load a playlist using the
+              <button
+                type="button"
+                class="inline-flex align-middle p-0.5 rounded hover:bg-white/10 transition-colors no-drag"
+                on:click={openEditor}
+                title="Soundtrack Editor"
+                aria-label="Soundtrack Editor"
+              >
+                <i class="material-icons text-base">edit</i>
+              </button>
+              button.
+            </div>
+          {:else if currentTrackName}
             <div
-              class="text-sm font-bold overflow-hidden whitespace-nowrap {shouldScrollTrack
+              class="text-xs font-bold overflow-hidden whitespace-nowrap min-h-0 {shouldScrollTrack
                 ? 'scrolling-track'
                 : ''}"
               bind:this={trackNameElement}
@@ -420,7 +453,7 @@
               >
             </div>
           {:else}
-            <div class="text-base font-bold text-d2-text/60">No track</div>
+            <div class="text-xs font-bold text-d2-text/60 flex-shrink-0">No track</div>
           {/if}
         </div>
       </div>

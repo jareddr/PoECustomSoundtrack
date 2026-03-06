@@ -39,6 +39,14 @@
     "nsis": {
       "oneClick": "true",
       "perMachine": "true"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "exile_tunes.png",
+      "category": "Utility"
+    },
+    "appImage": {
+      "synopsis": "Replace Path of Exile music with custom soundtracks"
     }
   },
   "eslintConfig": {
@@ -55,9 +63,7 @@
     "electron-updater": "^6.1.7",
     "file-tail": "^0.3.0",
     "ipc": "0.0.1",
-    "ps-list": "^5.0.0",
-    "youtube-playlist": "^1.0.4",
-    "yt-playlist-scraper": "^1.2.1"
+    "ps-list": "^5.0.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.0.0",

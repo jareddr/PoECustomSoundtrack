@@ -323,6 +323,10 @@ function setupIpcHandlers() {
         editorWindow._allowClose();
       }
       editorWindow.close();
+      // Refresh main window state (e.g. track count) after editor closed
+      if (typeof exileTunes.broadcastStateUpdate === 'function') {
+        exileTunes.broadcastStateUpdate();
+      }
     }
   });
 

@@ -1,4 +1,5 @@
-const { ipcMain } = require('electron');
+const { ipcMain, app } = require('electron');
+const path = require('path');
 const defaults = require('./defaults.js');
 const fs = require('fs');
 const fileTail = require('file-tail');
@@ -619,8 +620,9 @@ function writeFile(file, data) {
  * @returns {Object|false} Parsed JSON object or false on error
  */
 function readJsonFile(file) {
+  if (!file || typeof file !== 'string' || !file.trim()) return null;
   try {
-    const handle = fs.openSync(file, 'r+');
+    const handle = fs.openSync(file, 'r');
     let data = fs.readFileSync(file, 'utf-8');
     fs.closeSync(handle);
     data = data.replace(/\\+/g, '/');
@@ -911,6 +913,8 @@ function getState() {
     const charEvent = checkCharEvent();
     const logExists = doesLogExist();
 
+    const soundtrackTrackCount = soundtrack && Array.isArray(soundtrack.tracks) ? soundtrack.tracks.length : 0;
+
     // Create a plain object with only serializable primitives
     const state = {
       path: String(poePath),
@@ -918,6 +922,7 @@ function getState() {
       volume: (volume !== false && !isNaN(Number(volume))) ? Number(volume) : 0,
       charEvent: Boolean(charEvent),
       soundtrack: String(soundtrackPath),
+      soundtrackTrackCount,
       playerVolume: String(playerVolume),
       isUpdateAvailable: Boolean(isUpdateAvailable),
       isUpdateDownloading: Boolean(isUpdateDownloading),
@@ -939,6 +944,7 @@ function getState() {
       volume: 0,
       charEvent: true,
       soundtrack: '',
+      soundtrackTrackCount: 0,
       playerVolume: String(constants.PLAYER.DEFAULT_VOLUME),
       isUpdateAvailable: false,
       isUpdateDownloading: false,
@@ -1014,8 +1020,30 @@ function run(browserWindow) {
 
   setDefaults();
   loadWorldAreas();
-  loadSoundtrack(settings.getSync('soundtrack'));
+
+  // Resolve soundtrack path: relative paths are resolved from app directory so startup load finds the file
+  let soundtrackPath = settings.getSync('soundtrack') || '';
+  if (soundtrackPath && !path.isAbsolute(soundtrackPath)) {
+    soundtrackPath = path.join(app.getAppPath(), soundtrackPath);
+  }
+  loadSoundtrack(soundtrackPath);
+
   startWatchingLog();
+
+  // Push state to main window after delays so it gets correct track count once ready (handles load race)
+  [300, 800, 1500].forEach((ms) => {
+    setTimeout(() => {
+      if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        try {
+          const state = getState();
+          mainWindow.webContents.send('updateState', state);
+          lastState = state;
+        } catch (err) {
+          console.error('Error sending delayed updateState:', err);
+        }
+      }
+    }, ms);
+  });
   
   // Start watching config file for changes
   watchConfigFile();
@@ -1043,6 +1071,16 @@ function run(browserWindow) {
       if (loaded) {
         settings.setSync('soundtrack', arg[0]);
         sendStateUpdate(event);
+        // Always push state to main window when a file is loaded (don't rely on change detection)
+        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+          try {
+            const state = getState();
+            mainWindow.webContents.send('updateState', state);
+            lastState = state;
+          } catch (err) {
+            console.error('Error sending updateState to main window after setSoundtrack:', err);
+          }
+        }
       }
     }
   });
@@ -1286,4 +1324,5 @@ module.exports = {
   run,
   updateAvailable,
   updateDownloading,
+  broadcastStateUpdate,
 };

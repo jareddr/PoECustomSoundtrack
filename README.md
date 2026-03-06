@@ -106,6 +106,21 @@ The app uses `electron-builder` to create installers and publish to GitHub Relea
 
 #### Release Process
 
+**Option A: GitHub Actions (recommended)** — Windows (zip + NSIS) and Linux (AppImage) are built in CI and attached to the release:
+
+1. Update the version in `package.json` (e.g. `1.9.9` → `1.10.0`).
+2. Commit, push, then create and push a tag matching the version:
+   ```bash
+   git add package.json
+   git commit -m "Release v1.10.0"
+   git push origin main
+   git tag v1.10.0
+   git push origin v1.10.0
+   ```
+3. The [Release workflow](.github/workflows/release.yml) runs, builds both platforms, and creates a GitHub Release for that tag with all artifacts attached. No `GH_TOKEN` or draft release needed.
+
+**Option B: Manual release** (single platform, or when CI is not used):
+
 1. **Update Version**:
    - Edit `package.json` and increment the version number (e.g., `1.6.1` → `1.6.2`)
 
