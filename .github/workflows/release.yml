@@ -36,7 +36,7 @@ jobs:
         run: npm run build
 
       - name: Build Electron (${{ matrix.platform }})
-        run: npx electron-builder --${{ matrix.platform }}
+        run: npx electron-builder --${{ matrix.platform }} --publish=off
         env:
           # Avoid optional native deps failing the build when not needed
           npm_config_build_from_source: 'false'
