@@ -26,7 +26,7 @@
       "defaults.js",
       "package.json",
       "dist-renderer/**/*",
-      "!node_modules/**/*"
+      "node_modules/**/*"
     ],
     "win": {
       "publish": "github",
