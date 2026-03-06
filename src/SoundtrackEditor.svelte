@@ -450,7 +450,7 @@
     try {
       data = decodeSoundtrack(raw);
     } catch (err) {
-      importError = err.message || 'Invalid encoding. The string may be corrupted or not a valid exported soundtrack.';
+      importError = 'Invalid import code';
       return;
     }
     const validationError = validateSoundtrackData(data);
@@ -521,7 +521,7 @@
       saving = true;
       errorMessage = '';
       const result = await ipcRenderer.invoke('save-file-dialog', {
-        defaultPath: currentFilePath || 'soundtrack.soundtrack'
+        defaultPath: currentFilePath || ''
       });
 
       if (result.canceled || !result.filePath) {
@@ -589,6 +589,29 @@
     try {
       saving = true;
       errorMessage = '';
+      if (!currentFilePath) {
+        const result = await ipcRenderer.invoke('save-file-dialog', {
+          defaultPath: ''
+        });
+        if (result.canceled || !result.filePath) {
+          saving = false;
+          return;
+        }
+        const saveResult = await ipcRenderer.invoke('saveSoundtrackAs', soundtrackData, result.filePath);
+        if (saveResult.success) {
+          currentFilePath = saveResult.file;
+          originalDataJson = JSON.stringify(soundtrackData);
+          onSave();
+          const source = pendingCloseSource;
+          closeUnsavedDialog();
+          closingConfirmed = true;
+          doClose(source);
+        } else {
+          errorMessage = saveResult.error || 'Failed to save soundtrack';
+        }
+        saving = false;
+        return;
+      }
       const result = await ipcRenderer.invoke('saveSoundtrack', soundtrackData);
       if (result.success) {
         originalDataJson = JSON.stringify(soundtrackData);
@@ -638,9 +661,9 @@
     <h2 id="editor-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
       Edit Soundtrack
     </h2>
-    {#if currentFilePath}
-      <p class="text-sm text-bronze-label/70 truncate mt-1" title={currentFilePath}>{currentFilePath}</p>
-    {/if}
+    <p class="text-sm text-bronze-label/70 truncate mt-1" title={currentFilePath || 'Unsaved Soundtrack'}>
+      {currentFilePath || 'Unsaved Soundtrack'}
+    </p>
   </div>
 
   {#if errorMessage}
@@ -1162,7 +1185,7 @@
         aria-label="Encoded soundtrack string to import"
       />
       {#if importError}
-        <div class="mt-3 p-2 rounded border border-bronze-border bg-bronze-panel text-bronze-label text-sm">
+        <div class="mt-3 p-3 rounded border-2 border-amber-500/80 bg-amber-950/40 text-amber-200 text-sm font-medium shadow-sm">
           {importError}
         </div>
       {/if}
