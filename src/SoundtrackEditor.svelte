@@ -38,6 +38,12 @@
   let lastFetchedUrl = '';
   let isAutoFetching = false;
 
+  // Add-track modal tab and playlist state
+  let addTrackModalTab = 'track'; // 'track' | 'playlist'
+  let playlistUrl = '';
+  let playlistFetchResult = null; // null | { success: true, items: { url, name }[] } | { success: false, error: string }
+  let playlistLoading = false;
+
   // Filter state
   let filterQuery = '';
 
@@ -78,6 +84,12 @@
     if (!url || !url.trim()) return false;
     const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
     return youtubeRegex.test(url.trim());
+  }
+
+  function isValidPlaylistUrl(url) {
+    if (!url || !url.trim()) return false;
+    const u = url.trim();
+    return u.includes('list=') || u.includes('youtube.com/playlist');
   }
 
   // Reactive statement to auto-fetch YouTube title when URL changes
@@ -188,12 +200,52 @@
     }
   }
 
+  async function fetchPlaylist() {
+    if (!isValidPlaylistUrl(playlistUrl)) return;
+    playlistLoading = true;
+    playlistFetchResult = null;
+    errorMessage = '';
+    try {
+      const result = await ipcRenderer.invoke('fetchYouTubePlaylist', playlistUrl.trim());
+      playlistFetchResult = result;
+      if (!result.success) {
+        errorMessage = result.error || 'Failed to fetch playlist';
+      }
+    } catch (err) {
+      console.error('fetchPlaylist error:', err);
+      playlistFetchResult = { success: false, error: err.message || 'Failed to fetch playlist' };
+      errorMessage = playlistFetchResult.error;
+    } finally {
+      playlistLoading = false;
+    }
+  }
+
+  function confirmPlaylistImport() {
+    if (!playlistFetchResult || !playlistFetchResult.success || !playlistFetchResult.items || playlistFetchResult.items.length === 0) return;
+    const newTracks = playlistFetchResult.items.map((item) => ({
+      name: item.name || 'Untitled',
+      location: item.url,
+      matches: []
+    }));
+    soundtrackData.tracks = [...soundtrackData.tracks, ...newTracks];
+    playlistUrl = '';
+    playlistFetchResult = null;
+    playlistLoading = false;
+    errorMessage = '';
+    showAddTrackModal = false;
+    addTrackModalTab = 'track';
+  }
+
   function openAddTrackModal() {
     showAddTrackModal = true;
+    addTrackModalTab = 'track';
     newTrackName = '';
     newTrackUrl = '';
     newTrackMatches = [];
     matchInputValue = '';
+    playlistUrl = '';
+    playlistFetchResult = null;
+    playlistLoading = false;
     errorMessage = '';
     lastFetchedUrl = '';
     isAutoFetching = false;
@@ -201,10 +253,14 @@
 
   function closeAddTrackModal() {
     showAddTrackModal = false;
+    addTrackModalTab = 'track';
     newTrackName = '';
     newTrackUrl = '';
     newTrackMatches = [];
     matchInputValue = '';
+    playlistUrl = '';
+    playlistFetchResult = null;
+    playlistLoading = false;
     errorMessage = '';
     lastFetchedUrl = '';
     isAutoFetching = false;
@@ -960,7 +1016,7 @@
       on:click|stopPropagation
       on:keydown|stopPropagation
     >
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <h3 id="add-track-title" class="text-2xl font-exocet font-bold uppercase tracking-wide text-bronze-title">
           Add New Track
         </h3>
@@ -973,125 +1029,217 @@
         </button>
       </div>
 
+      <!-- Tabs: Add Track | Add Playlist -->
+      <div class="flex gap-1 mb-4 border-b border-bronze-border">
+        <button
+          type="button"
+          on:click={() => addTrackModalTab = 'track'}
+          class="px-3 py-2 text-sm font-medium rounded-t transition-colors {addTrackModalTab === 'track' ? 'bg-bronze-bg text-bronze-title border border-bronze-border border-b-0' : 'text-bronze-label hover:text-bronze-title'}"
+          aria-pressed={addTrackModalTab === 'track'}
+        >
+          Add Track
+        </button>
+        <button
+          type="button"
+          on:click={() => addTrackModalTab = 'playlist'}
+          class="px-3 py-2 text-sm font-medium rounded-t transition-colors {addTrackModalTab === 'playlist' ? 'bg-bronze-bg text-bronze-title border border-bronze-border border-b-0' : 'text-bronze-label hover:text-bronze-title'}"
+          aria-pressed={addTrackModalTab === 'playlist'}
+        >
+          Add Playlist
+        </button>
+      </div>
+
       {#if errorMessage}
         <div class="mb-4 p-2 rounded border border-bronze-border bg-bronze-panel text-bronze-label text-sm">
           {errorMessage}
         </div>
       {/if}
 
-      <!-- Section: TRACK -->
-      <div class="mb-6">
-        <div class="bronze-section-header mb-3">
-          <i class="material-icons text-lg" aria-hidden="true">music_note</i>
-          Track
-        </div>
-        <div class="space-y-3">
-          <div>
-            <label for="add-track-url" class="block text-sm mb-1 bronze-label">YouTube URL {#if loadingYouTube || isAutoFetching}(Loading...){/if}</label>
-            <input
-              id="add-track-url"
-              type="text"
-              bind:value={newTrackUrl}
-              class="w-full bronze-input"
-              placeholder="https://www.youtube.com/watch?v=..."
-              disabled={loadingYouTube || isAutoFetching}
-            />
+      {#if addTrackModalTab === 'track'}
+        <!-- Section: TRACK -->
+        <div class="mb-6">
+          <div class="bronze-section-header mb-3">
+            <i class="material-icons text-lg" aria-hidden="true">music_note</i>
+            Track
           </div>
-          <div>
-            <label for="add-track-name" class="block text-sm mb-1 bronze-label">Track Name</label>
-            <input
-              id="add-track-name"
-              type="text"
-              bind:value={newTrackName}
-              class="w-full bronze-input"
-              placeholder="Track name"
-              disabled={loadingYouTube}
-            />
-          </div>
-        </div>
-      </div>
-
-      <hr class="bronze-section-divider my-4" />
-
-      <!-- Section: MATCHES -->
-      <div class="mb-6">
-        <div class="bronze-section-header mb-3">
-          <i class="material-icons text-lg" aria-hidden="true">place</i>
-          Matches
-        </div>
-        <div class="space-y-2">
-          {#each newTrackMatches as match, matchIndex}
-            <div class="flex items-center justify-between bg-bronze-bg p-2 rounded border border-bronze-border/50">
-              <span class="text-sm bronze-label">{getMatchDisplay(match)}</span>
-              <button
-                on:click={() => newTrackMatches = newTrackMatches.filter((_, i) => i !== matchIndex)}
-                class="text-bronze-title hover:text-bronze-buttonHover text-sm"
-                title="Remove match"
-              >
-                <i class="material-icons text-base">delete</i>
-              </button>
-            </div>
-          {/each}
-          <div class="autocomplete-container relative">
-            <div class="flex gap-2 mb-2">
-              <select
-                bind:value={matchSearchType}
-                on:change={() => matchSearchType === 'boss' && autocompleteSearch(matchInputValue, matchSearchType)}
-                class="bronze-select flex-1 min-w-0"
-              >
-                <option value="name">Name</option>
-                <option value="tag">Tag</option>
-                <option value="area_type_tag">Area Type</option>
-                <option value="boss">Act Boss</option>
-              </select>
+          <div class="space-y-3">
+            <div>
+              <label for="add-track-url" class="block text-sm mb-1 bronze-label">YouTube URL {#if loadingYouTube || isAutoFetching}(Loading...){/if}</label>
               <input
+                id="add-track-url"
                 type="text"
-                bind:value={matchInputValue}
-                on:input={(e) => handleMatchInputChange(e.target.value)}
-                on:focus={() => autocompleteSearch(matchInputValue, matchSearchType)}
-                on:keydown={handleAutocompleteKeydown}
-                class="flex-1 bronze-input min-w-0"
-                placeholder="Search or click to browse…"
+                bind:value={newTrackUrl}
+                class="w-full bronze-input"
+                placeholder="https://www.youtube.com/watch?v=..."
+                disabled={loadingYouTube || isAutoFetching}
               />
             </div>
-            {#if showAutocomplete}
-              <div class="autocomplete-dropdown absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded shadow-lg">
-                {#if autocompleteSuggestions.length > 0}
-                  {#each autocompleteSuggestions as suggestion, i}
-                    <button
-                      on:click={() => selectAutocompleteSuggestion(suggestion)}
-                      class="w-full text-left px-2 py-1.5 text-sm bronze-label transition-colors {i === autocompleteHighlightIndex ? 'bg-bronze-button text-bronze-buttonText' : 'hover:bg-bronze-bg'}"
-                    >
-                      {suggestion.value}
-                    </button>
-                  {/each}
-                {:else}
-                  <div class="px-2 py-3 text-sm text-bronze-label/70 text-center">
-                    No results
-                  </div>
-                {/if}
-              </div>
-            {/if}
+            <div>
+              <label for="add-track-name" class="block text-sm mb-1 bronze-label">Track Name</label>
+              <input
+                id="add-track-name"
+                type="text"
+                bind:value={newTrackName}
+                class="w-full bronze-input"
+                placeholder="Track name"
+                disabled={loadingYouTube}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="flex gap-2 justify-end">
-        <button
-          on:click={closeAddTrackModal}
-          class="bronze-btn-secondary"
-          disabled={loadingYouTube || saving}
-        >
-          Cancel
-        </button>
-        <button
-          on:click={addTrack}
-          class="bronze-btn-primary"
-          disabled={loadingYouTube || saving || !newTrackUrl.trim()}
-        >
-          Add Track
-        </button>
-      </div>
+        <hr class="bronze-section-divider my-4" />
+
+        <!-- Section: MATCHES -->
+        <div class="mb-6">
+          <div class="bronze-section-header mb-3">
+            <i class="material-icons text-lg" aria-hidden="true">place</i>
+            Matches
+          </div>
+          <div class="space-y-2">
+            {#each newTrackMatches as match, matchIndex}
+              <div class="flex items-center justify-between bg-bronze-bg p-2 rounded border border-bronze-border/50">
+                <span class="text-sm bronze-label">{getMatchDisplay(match)}</span>
+                <button
+                  on:click={() => newTrackMatches = newTrackMatches.filter((_, i) => i !== matchIndex)}
+                  class="text-bronze-title hover:text-bronze-buttonHover text-sm"
+                  title="Remove match"
+                >
+                  <i class="material-icons text-base">delete</i>
+                </button>
+              </div>
+            {/each}
+            <div class="autocomplete-container relative">
+              <div class="flex gap-2 mb-2">
+                <select
+                  bind:value={matchSearchType}
+                  on:change={() => matchSearchType === 'boss' && autocompleteSearch(matchInputValue, matchSearchType)}
+                  class="bronze-select flex-1 min-w-0"
+                >
+                  <option value="name">Name</option>
+                  <option value="tag">Tag</option>
+                  <option value="area_type_tag">Area Type</option>
+                  <option value="boss">Act Boss</option>
+                </select>
+                <input
+                  type="text"
+                  bind:value={matchInputValue}
+                  on:input={(e) => handleMatchInputChange(e.target.value)}
+                  on:focus={() => autocompleteSearch(matchInputValue, matchSearchType)}
+                  on:keydown={handleAutocompleteKeydown}
+                  class="flex-1 bronze-input min-w-0"
+                  placeholder="Search or click to browse…"
+                />
+              </div>
+              {#if showAutocomplete}
+                <div class="autocomplete-dropdown absolute z-10 w-full border border-bronze-border bg-bronze-panel max-h-48 overflow-y-auto rounded shadow-lg">
+                  {#if autocompleteSuggestions.length > 0}
+                    {#each autocompleteSuggestions as suggestion, i}
+                      <button
+                        on:click={() => selectAutocompleteSuggestion(suggestion)}
+                        class="w-full text-left px-2 py-1.5 text-sm bronze-label transition-colors {i === autocompleteHighlightIndex ? 'bg-bronze-button text-bronze-buttonText' : 'hover:bg-bronze-bg'}"
+                      >
+                        {suggestion.value}
+                      </button>
+                    {/each}
+                  {:else}
+                    <div class="px-2 py-3 text-sm text-bronze-label/70 text-center">
+                      No results
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2 justify-end">
+          <button
+            on:click={closeAddTrackModal}
+            class="bronze-btn-secondary"
+            disabled={loadingYouTube || saving}
+          >
+            Cancel
+          </button>
+          <button
+            on:click={addTrack}
+            class="bronze-btn-primary"
+            disabled={loadingYouTube || saving || !newTrackUrl.trim()}
+          >
+            Add Track
+          </button>
+        </div>
+      {:else}
+        <!-- Add Playlist tab: no Matches section -->
+        <div class="mb-6">
+          <div class="bronze-section-header mb-3">
+            <i class="material-icons text-lg" aria-hidden="true">playlist_play</i>
+            YouTube playlist URL
+          </div>
+          <div class="space-y-3">
+            <input
+              id="add-playlist-url"
+              type="text"
+              bind:value={playlistUrl}
+              class="w-full bronze-input"
+              placeholder="https://www.youtube.com/playlist?list=..."
+              disabled={playlistLoading}
+            />
+            <button
+              type="button"
+              on:click={fetchPlaylist}
+              class="bronze-btn-primary"
+              disabled={playlistLoading || !isValidPlaylistUrl(playlistUrl)}
+            >
+              {playlistLoading ? 'Loading…' : 'Fetch playlist'}
+            </button>
+          </div>
+        </div>
+        {#if playlistFetchResult && playlistFetchResult.success && playlistFetchResult.items}
+          {#if playlistFetchResult.items.length === 0}
+            <p class="mb-4 text-sm text-bronze-label">This playlist has no videos.</p>
+          {:else}
+            <div class="mb-4 p-4 rounded border-2 border-bronze-border bg-bronze-bg">
+              <p class="text-base font-semibold text-bronze-title mb-1">
+                Will import <strong>{playlistFetchResult.items.length}</strong> track{playlistFetchResult.items.length === 1 ? '' : 's'}
+              </p>
+              <p class="text-xs text-bronze-label/80 mb-3">Preview the tracks below:</p>
+              <div class="max-h-28 overflow-y-auto rounded border border-bronze-border/50 bg-bronze-panel py-1">
+                <ul class="list-none px-2 space-y-0.5" aria-label="Tracks to import">
+                  {#each playlistFetchResult.items as item, i}
+                    <li class="text-sm text-bronze-label py-0.5 truncate" title={item.name}>
+                      <span class="text-bronze-label/60 tabular-nums">{i + 1}.</span> {item.name}
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            </div>
+            <div class="flex gap-2 justify-end">
+              <button
+                on:click={closeAddTrackModal}
+                class="bronze-btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                on:click={confirmPlaylistImport}
+                class="bronze-btn-primary"
+              >
+                Confirm
+              </button>
+            </div>
+          {/if}
+        {:else if addTrackModalTab === 'playlist'}
+          <div class="flex gap-2 justify-end">
+            <button
+              on:click={closeAddTrackModal}
+              class="bronze-btn-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        {/if}
+      {/if}
     </div>
   </div>
 {/if}

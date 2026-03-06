@@ -7,6 +7,110 @@ const { version } = require('./package.json');
 const constants = require('./constants.js');
 const settings = require('electron-settings');
 const bosses = require('./bosses.js');
+const https = require('https');
+
+/**
+ * Extract a JSON object or array from HTML after a given prefix (e.g. "var ytInitialData = ").
+ * Matches braces so nested JSON is captured correctly.
+ */
+function extractJsonFromHtml(html, prefix) {
+  const idx = html.indexOf(prefix);
+  if (idx < 0) return null;
+  const start = idx + prefix.length;
+  const rest = html.slice(start).trim();
+  const open = rest[0] === '[' ? '[' : '{';
+  const close = rest[0] === '[' ? ']' : '}';
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let i = 0;
+  for (; i < rest.length; i++) {
+    const c = rest[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\' && inString) { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === open) depth++;
+    else if (c === close) { depth--; if (depth === 0) break; }
+  }
+  if (depth !== 0) return null;
+  try {
+    return JSON.parse(rest.slice(0, i + 1));
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Fetch YouTube playlist page and parse video list from ytInitialData (no consent redirect).
+ * Returns { success: true, items: [ { url, name } ] } or { success: false, error }.
+ */
+function fetchYouTubePlaylistVideos(playlistId) {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'www.youtube.com',
+      path: '/playlist?list=' + encodeURIComponent(playlistId),
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cookie': 'CONSENT=YES+cb.20210716-13-p1.en+FX;'
+      }
+    };
+    const req = https.request(options, (res) => {
+      if (res.statusCode !== 200) {
+        resolve({ success: false, error: `Request failed: ${res.statusCode} ${res.statusMessage}` });
+        return;
+      }
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        const data = extractJsonFromHtml(body, 'var ytInitialData = ');
+        if (!data || !data.contents) {
+          resolve({ success: false, error: 'Could not find playlist data in page (YouTube may have changed)' });
+          return;
+        }
+        try {
+          const tabs = data.contents?.twoColumnBrowseResultsRenderer?.tabs;
+          const tab = Array.isArray(tabs) ? tabs[0] : null;
+          const content = tab?.tabRenderer?.content;
+          const sectionList = content?.sectionListRenderer?.contents;
+          const firstSection = Array.isArray(sectionList) ? sectionList[0] : null;
+          const itemSection = firstSection?.itemSectionRenderer?.contents;
+          const playlistRenderer = Array.isArray(itemSection) ? itemSection[0] : null;
+          const listContents = playlistRenderer?.playlistVideoListRenderer?.contents;
+          const rawList = Array.isArray(listContents) ? listContents : [];
+          const items = [];
+          for (const item of rawList) {
+            if (item.continuationItemRenderer) continue;
+            const video = item.playlistVideoRenderer;
+            if (!video?.videoId) continue;
+            const title = video.title?.runs?.[0]?.text ?? video.title?.simpleText ?? 'Untitled';
+            items.push({
+              url: 'https://www.youtube.com/watch?v=' + video.videoId,
+              name: String(title).trim() || 'Untitled'
+            });
+          }
+          console.log('[fetchYouTubePlaylist] playlistId:', playlistId, 'videos:', items.length);
+          resolve({ success: true, items });
+        } catch (err) {
+          console.error('fetchYouTubePlaylist parse error:', err);
+          resolve({ success: false, error: err.message || 'Failed to parse playlist' });
+        }
+      });
+    });
+    req.on('error', (err) => {
+      console.error('fetchYouTubePlaylist request error:', err);
+      resolve({ success: false, error: err.message || 'Network error' });
+    });
+    req.setTimeout(15000, () => {
+      req.destroy();
+      resolve({ success: false, error: 'Request timed out' });
+    });
+    req.end();
+  });
+}
 
 let mainWindow = null;
 let currentTrackName = false;
@@ -975,6 +1079,22 @@ function run(browserWindow) {
       data: soundtrack,
       filePath: settings.getSync('soundtrack') || ''
     };
+  });
+
+  // IPC handler for fetching YouTube playlist video list (no API key; direct GET + ytInitialData parse)
+  ipcMain.handle('fetchYouTubePlaylist', async (event, playlistUrl) => {
+    const url = (playlistUrl && String(playlistUrl).trim()) || '';
+    const hasListParam = url.includes('list=');
+    const isPlaylistUrl = url.includes('youtube.com/playlist') || (url.includes('youtube.com') && hasListParam) || (url.includes('youtu.be') && hasListParam);
+    if (!url || !isPlaylistUrl) {
+      return { success: false, error: 'Please enter a valid YouTube playlist URL (e.g. https://www.youtube.com/playlist?list=...)' };
+    }
+    const listMatch = url.match(/[?&]list=([^&]+)/);
+    const playlistId = listMatch ? listMatch[1].trim() : '';
+    if (!playlistId) {
+      return { success: false, error: 'Could not find playlist ID in URL' };
+    }
+    return fetchYouTubePlaylistVideos(playlistId);
   });
 
   // IPC handler for getting world areas data for autocomplete
