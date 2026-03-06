@@ -252,7 +252,8 @@ function randomElement(arr) {
  */
 function loadWorldAreas() {
   try {
-    const worldAreasData = readJsonFile('world_areas.json');
+    const worldAreasPath = path.join(app.getAppPath(), 'world_areas.json');
+    const worldAreasData = readJsonFile(worldAreasPath);
     if (!worldAreasData) {
       console.warn('Failed to load world_areas.json');
       return false;

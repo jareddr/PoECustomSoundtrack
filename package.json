@@ -24,7 +24,10 @@
       "exileTunes.js",
       "bosses.js",
       "defaults.js",
+      "constants.js",
       "package.json",
+      "exiletunes.ico",
+      "world_areas.json",
       "dist-renderer/**/*",
       "node_modules/**/*"
     ],
